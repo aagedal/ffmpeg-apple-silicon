@@ -1,0 +1,31 @@
+# Build artifacts
+/compiled/
+/sources/
+/build/
+scripts/build/
+scripts/compiled/
+scripts/sources/
+
+# Generated binaries
+/ffmpeg
+/ffprobe
+
+# Build progress tracking
+.build-progress
+.build-progress.backup
+
+# Test outputs (generated)
+/test_output/
+/test_videos/
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Claude Code
+.claude/
+
+# Editor files
+*.swp
+*.swo
+*~
