@@ -7,22 +7,27 @@ This repository contains a modular build system for creating a custom static FFm
 ## Features
 
 ### Video Codecs
-- **x264** - H.264/AVC encoding
-- **x265** - HEVC/H.265 encoding (with high bit depth)
-- **libvpx** - VP8/VP9 encoding/decoding
-- **libaom** - AV1 encoding/decoding
-- **SVT-AV1** - Fast AV1 encoding
-- **VVenC/VVdeC** - VVC (H.266) encoding/decoding
-- **libjxl** - JPEG XL encoding/decoding ✨
+- **x264** (stable) - H.264/AVC encoding
+- **x265** (master) - HEVC/H.265 encoding (with high bit depth)
+- **libvpx** 1.16.0 - VP8/VP9 encoding/decoding
+- **libaom** 3.13.2 - AV1 encoding/decoding
+- **SVT-AV1** 4.0.1 - Fast AV1 encoding
+- **VVenC** 1.14.0 / **VVdeC** 3.1.0 - VVC (H.266) encoding/decoding
+- **libjxl** 0.11.2 - JPEG XL encoding/decoding ✨
+- **libwebp** 1.6.0 - WebP image/animation encoding
+- **libtheora** 1.2.0 - Theora video codec
+- **FLAC** 1.5.0 - Lossless audio codec
 
 ### Audio Codecs
-- **Opus** - Modern audio codec
-- **Vorbis** - Ogg Vorbis
-- **LAME** - MP3 encoding
-- **FDK-AAC** - High-quality AAC encoding
+- **Opus** 1.6.1 - Modern audio codec
+- **Vorbis** 1.3.7 / **libogg** 1.3.6 - Ogg Vorbis
+- **LAME** 3.100 - MP3 encoding
+- **FDK-AAC** 2.0.3 - High-quality AAC encoding
 
 ### Additional Features
-- **libass** - Advanced subtitle rendering
+- **Whisper** 1.8.4 - Speech recognition/transcription filter
+- **libass** 0.17.4 - Advanced subtitle rendering
+- **Freetype** 2.14.2 / **Fribidi** 1.0.16 - Font rendering and bidirectional text
 - **VideoToolbox** - macOS hardware-accelerated encoding (H.264, HEVC, ProRes)
 - **AudioToolbox** - macOS audio processing
 - **NEON optimizations** - ARM64 SIMD instructions for better performance
@@ -184,8 +189,8 @@ Example using VideoToolbox (hardware acceleration):
 Edit `config.sh` and modify the version variables:
 
 ```bash
-export LIBJXL_VERSION="0.11.0"
-export FFMPEG_VERSION="7.1"
+export LIBJXL_VERSION="0.11.2"
+export FFMPEG_VERSION="8.1"
 # ... etc
 ```
 
