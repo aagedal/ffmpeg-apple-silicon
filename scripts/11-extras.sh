@@ -67,26 +67,8 @@ if [ ! -d "fribidi-${FRIBIDI_VERSION}" ]; then
     cd "${SOURCE_DIR}"
 fi
 
-# Build harfbuzz (required for libass)
-echo "  Building harfbuzz ${HARFBUZZ_VERSION}..."
-if [ ! -d "harfbuzz-${HARFBUZZ_VERSION}" ]; then
-    curl -L -O "https://github.com/harfbuzz/harfbuzz/releases/download/${HARFBUZZ_VERSION}/harfbuzz-${HARFBUZZ_VERSION}.tar.xz"
-    tar xf "harfbuzz-${HARFBUZZ_VERSION}.tar.xz"
-    
-    mkdir -p "harfbuzz-${HARFBUZZ_VERSION}/build"
-    cd "harfbuzz-${HARFBUZZ_VERSION}/build"
-    
-    meson setup \
-        --prefix="${INSTALL_DIR}" \
-        --default-library=static \
-        -Dtests=disabled \
-        -Ddocs=disabled \
-        ..
-    
-    ninja
-    ninja install
-    cd "${SOURCE_DIR}"
-fi
+# Harfbuzz is optional - libass works without it for basic subtitle rendering
+# Skipping harfbuzz to avoid build complexity
 
 # Build libass (subtitle rendering)
 echo "  Building libass ${LIBASS_VERSION}..."

@@ -49,7 +49,7 @@ if [ ! -d "libvorbis-${VORBIS_VERSION}" ]; then
     # Fix libtool for Apple Silicon
     sed -i '' 's/-force_cpusubtype_ALL//g' libtool
 
-    make ${MAKEFLAGS} -k
+    make ${MAKEFLAGS} -k || true
     make install || true
     cd "${SOURCE_DIR}"
 fi

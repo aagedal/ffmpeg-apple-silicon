@@ -41,8 +41,8 @@ if [ ! -d "highway-${HIGHWAY_VERSION}" ]; then
     curl -L -O "https://github.com/google/highway/archive/${HIGHWAY_VERSION}.tar.gz"
     tar xf "${HIGHWAY_VERSION}.tar.gz"
     
-    mkdir -p "highway-${HIGHWAY_VERSION}/build"
-    cd "highway-${HIGHWAY_VERSION}/build"
+    mkdir -p "highway-${HIGHWAY_VERSION}/cmake-build"
+    cd "highway-${HIGHWAY_VERSION}/cmake-build"
     
     cmake \
         -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
