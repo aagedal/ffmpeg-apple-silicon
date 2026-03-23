@@ -72,6 +72,7 @@ export PATH="${BIN_DIR}:${PATH}"
     --enable-libmp3lame \
     --enable-libfdk-aac \
     --enable-libtheora \
+    --enable-libopenjpeg \
     --enable-whisper \
     \
     --enable-videotoolbox \
@@ -93,10 +94,12 @@ export PATH="${BIN_DIR}:${PATH}"
     --enable-encoder=libfdk_aac \
     --enable-encoder=flac \
     --enable-encoder=libtheora \
+    --enable-encoder=libopenjpeg \
     --enable-encoder=h264_videotoolbox \
     --enable-encoder=hevc_videotoolbox \
     --enable-encoder=prores_videotoolbox \
     \
+    --enable-decoder=libopenjpeg \
     --enable-decoder=libjxl \
     --enable-decoder=libfdk_aac \
     --enable-decoder=flac \

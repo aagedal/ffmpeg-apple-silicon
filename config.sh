@@ -64,6 +64,7 @@ export FLAC_VERSION="1.5.0"
 export THEORA_VERSION="1.2.0"
 export LIBBLURAY_VERSION="1.4.0"
 export WHISPER_VERSION="1.8.4"
+export OPENJPEG_VERSION="2.5.3"
 export FFMPEG_VERSION="8.1"
 
 # Progress tracking
