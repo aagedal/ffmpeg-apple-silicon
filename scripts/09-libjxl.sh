@@ -70,12 +70,16 @@ cd "${SOURCE_DIR}"
 mkdir -p "libjxl-${LIBJXL_VERSION}/build"
 cd "libjxl-${LIBJXL_VERSION}/build"
 
+# macOS 26+ SDK is missing libz.tbd stubs; point CMake at Homebrew's zlib
+ZLIB_PREFIX="$(brew --prefix zlib 2>/dev/null || echo /opt/homebrew/opt/zlib)"
+
 cmake \
     -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
     -DCMAKE_OSX_ARCHITECTURES=arm64 \
     -DBUILD_SHARED_LIBS=OFF \
     -DBUILD_TESTING=OFF \
-    -DJPEGXL_ENABLE_TOOLS=OFF \
+    -DJPEGXL_ENABLE_TOOLS=ON \
+    -DJPEGXL_ENABLE_DEVTOOLS=ON \
     -DJPEGXL_ENABLE_BENCHMARK=OFF \
     -DJPEGXL_ENABLE_EXAMPLES=OFF \
     -DJPEGXL_ENABLE_MANPAGES=OFF \
@@ -83,6 +87,9 @@ cmake \
     -DJPEGXL_FORCE_SYSTEM_LCMS2=OFF \
     -DCMAKE_DISABLE_FIND_PACKAGE_LCMS2=ON \
     -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    -DZLIB_ROOT="${ZLIB_PREFIX}" \
+    -DZLIB_LIBRARY="${ZLIB_PREFIX}/lib/libz.a" \
+    -DZLIB_INCLUDE_DIR="${ZLIB_PREFIX}/include" \
     ..
 
 make ${MAKEFLAGS}

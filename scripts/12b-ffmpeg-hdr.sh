@@ -1,32 +1,24 @@
 #!/bin/bash
 
-# Build FFmpeg with all codecs and macOS VideoToolbox/AudioToolbox support
+# Rebuild FFmpeg linked against SVT-AV1-HDR
+# Produces ffmpeg-hdr and ffprobe-hdr binaries
+# Must run after 06b-svt-av1-hdr.sh has replaced the mainline SVT-AV1 libraries
 
 source "$(dirname "$0")/../config.sh"
 
-COMPONENT="ffmpeg"
+COMPONENT="ffmpeg-hdr"
 
 if is_complete "${COMPONENT}"; then
     echo "[SKIP] ${COMPONENT} already built"
-    # Always ensure binaries are copied to workspace
-    if [ -f "${BIN_DIR}/ffmpeg" ]; then
-        cp "${BIN_DIR}/ffmpeg" "${WORKSPACE}/ffmpeg"
-        cp "${BIN_DIR}/ffprobe" "${WORKSPACE}/ffprobe"
-        chmod +x "${WORKSPACE}/ffmpeg" "${WORKSPACE}/ffprobe"
-    fi
     exit 0
 fi
 
-echo "Building FFmpeg ${FFMPEG_VERSION}..."
+echo "Rebuilding FFmpeg ${FFMPEG_VERSION} with SVT-AV1-HDR..."
 
-cd "${SOURCE_DIR}"
+cd "${SOURCE_DIR}/ffmpeg-${FFMPEG_VERSION}"
 
-if [ ! -d "ffmpeg-${FFMPEG_VERSION}" ]; then
-    curl -L -O "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
-    tar xf "ffmpeg-${FFMPEG_VERSION}.tar.xz"
-fi
-
-cd "ffmpeg-${FFMPEG_VERSION}"
+# Clean previous FFmpeg build so it links against the new SVT-AV1-HDR libraries
+make clean 2>/dev/null || true
 
 # Add bin directory to PATH for nasm
 export PATH="${BIN_DIR}:${PATH}"
@@ -123,17 +115,16 @@ export PATH="${BIN_DIR}:${PATH}"
     --enable-filter=msad
 
 make ${MAKEFLAGS}
-make install
 
-# Create a standalone binary by copying to workspace
-echo "Creating standalone binaries in workspace..."
-cp "${BIN_DIR}/ffmpeg" "${WORKSPACE}/ffmpeg"
-cp "${BIN_DIR}/ffprobe" "${WORKSPACE}/ffprobe"
-chmod +x "${WORKSPACE}/ffmpeg" "${WORKSPACE}/ffprobe"
+# Save as ffmpeg-hdr / ffprobe-hdr (separate from mainline build)
+echo "Creating SVT-AV1-HDR standalone binaries in workspace..."
+cp "ffmpeg" "${WORKSPACE}/ffmpeg-hdr"
+cp "ffprobe" "${WORKSPACE}/ffprobe-hdr"
+chmod +x "${WORKSPACE}/ffmpeg-hdr" "${WORKSPACE}/ffprobe-hdr"
 
 echo ""
-echo "FFmpeg binaries created:"
-echo "  ${WORKSPACE}/ffmpeg"
-echo "  ${WORKSPACE}/ffprobe"
+echo "FFmpeg (SVT-AV1-HDR) binaries created:"
+echo "  ${WORKSPACE}/ffmpeg-hdr"
+echo "  ${WORKSPACE}/ffprobe-hdr"
 
 mark_complete "${COMPONENT}"

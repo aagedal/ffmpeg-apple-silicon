@@ -9,6 +9,8 @@ scripts/sources/
 # Generated binaries
 /ffmpeg
 /ffprobe
+/ffmpeg-hdr
+/ffprobe-hdr
 
 # Build progress tracking
 .build-progress
