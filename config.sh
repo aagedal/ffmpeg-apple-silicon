@@ -14,6 +14,10 @@ export BIN_DIR="${INSTALL_DIR}/bin"
 export LIB_DIR="${INSTALL_DIR}/lib"
 export INCLUDE_DIR="${INSTALL_DIR}/include"
 
+# Final binaries land in dist/<ffmpeg-version>/<variant>/ (full, photo, minimal)
+# so every variant keeps the plain names ffmpeg/ffprobe and versions can coexist
+export DIST_DIR="${WORKSPACE}/dist"
+
 # Create directories if they don't exist
 mkdir -p "${BUILD_DIR}" "${SOURCE_DIR}" "${INSTALL_DIR}" "${BIN_DIR}" "${LIB_DIR}" "${INCLUDE_DIR}"
 

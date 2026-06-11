@@ -11,6 +11,10 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# Use the full-variant dist binary for the configured version
+source "${SCRIPT_DIR}/../config.sh" >/dev/null
+FFMPEG="${DIST_DIR}/${FFMPEG_VERSION}/full/ffmpeg"
+
 # Colors
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -28,7 +32,7 @@ if [ -z "$(ls -A test_videos 2>/dev/null)" ]; then
     echo ""
     
     # Generate a 10-second test pattern video with audio
-    ./ffmpeg -f lavfi -i testsrc=duration=10:size=1920x1080:rate=30 \
+    "$FFMPEG" -f lavfi -i testsrc=duration=10:size=1920x1080:rate=30 \
              -f lavfi -i sine=frequency=1000:duration=10 \
              -c:v libx264 -preset fast -crf 23 \
              -c:a aac -b:a 128k \

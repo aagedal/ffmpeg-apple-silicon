@@ -86,15 +86,17 @@ export PATH="${BIN_DIR}:${PATH}"
 make ${MAKEFLAGS}
 make install
 
-# Create a standalone binary by copying to workspace
-echo "Creating standalone binaries in workspace..."
-cp "${BIN_DIR}/ffmpeg" "${WORKSPACE}/ffmpeg"
-cp "${BIN_DIR}/ffprobe" "${WORKSPACE}/ffprobe"
-chmod +x "${WORKSPACE}/ffmpeg" "${WORKSPACE}/ffprobe"
+# Copy standalone binaries to dist
+OUT_DIR="${DIST_DIR}/${FFMPEG_VERSION}/minimal"
+echo "Creating standalone binaries in ${OUT_DIR}..."
+mkdir -p "${OUT_DIR}"
+cp "${BIN_DIR}/ffmpeg" "${OUT_DIR}/ffmpeg"
+cp "${BIN_DIR}/ffprobe" "${OUT_DIR}/ffprobe"
+chmod +x "${OUT_DIR}/ffmpeg" "${OUT_DIR}/ffprobe"
 
 echo ""
 echo "FFmpeg binaries created:"
-echo "  ${WORKSPACE}/ffmpeg"
-echo "  ${WORKSPACE}/ffprobe"
+echo "  ${OUT_DIR}/ffmpeg"
+echo "  ${OUT_DIR}/ffprobe"
 
 mark_complete "${COMPONENT}"

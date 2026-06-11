@@ -156,16 +156,18 @@ export PATH="${BIN_DIR}:${PATH}"
 
 make ${MAKEFLAGS}
 
-# Save as ffmpeg-photo / ffprobe-photo without `make install`
+# Copy to dist without `make install`
 # (installing would overwrite the full binaries in ${BIN_DIR})
-echo "Creating photo edition standalone binaries in workspace..."
-cp "ffmpeg" "${WORKSPACE}/ffmpeg-photo"
-cp "ffprobe" "${WORKSPACE}/ffprobe-photo"
-chmod +x "${WORKSPACE}/ffmpeg-photo" "${WORKSPACE}/ffprobe-photo"
+OUT_DIR="${DIST_DIR}/${FFMPEG_VERSION}/photo"
+echo "Creating photo edition standalone binaries in ${OUT_DIR}..."
+mkdir -p "${OUT_DIR}"
+cp "ffmpeg" "${OUT_DIR}/ffmpeg"
+cp "ffprobe" "${OUT_DIR}/ffprobe"
+chmod +x "${OUT_DIR}/ffmpeg" "${OUT_DIR}/ffprobe"
 
 echo ""
 echo "FFmpeg (Photo Edition) binaries created:"
-echo "  ${WORKSPACE}/ffmpeg-photo"
-echo "  ${WORKSPACE}/ffprobe-photo"
+echo "  ${OUT_DIR}/ffmpeg"
+echo "  ${OUT_DIR}/ffprobe"
 
 mark_complete "${COMPONENT}"

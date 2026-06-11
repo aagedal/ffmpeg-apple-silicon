@@ -49,13 +49,12 @@ if [ $COMPLETED -eq $TOTAL ]; then
     echo ""
     echo "Build complete! 🎉"
     echo ""
-    if [ -f "${WORKSPACE}/ffmpeg" ]; then
-        echo "FFmpeg binary: ${WORKSPACE}/ffmpeg"
-        echo "FFprobe binary: ${WORKSPACE}/ffprobe"
+    if [ -f "${DIST_DIR}/${FFMPEG_VERSION}/full/ffmpeg" ]; then
+        echo "Binaries: ${DIST_DIR}/${FFMPEG_VERSION}/{full,photo}/{ffmpeg,ffprobe}"
         echo ""
         echo "Quick test:"
-        echo "  ./ffmpeg -version"
-        echo "  ./ffmpeg -codecs | grep jxl"
+        echo "  ./dist/${FFMPEG_VERSION}/full/ffmpeg -version"
+        echo "  ./dist/${FFMPEG_VERSION}/full/ffmpeg -codecs | grep jxl"
     fi
 elif [ $COMPLETED -gt 0 ]; then
     echo ""

@@ -7,10 +7,7 @@ scripts/compiled/
 scripts/sources/
 
 # Generated binaries
-/ffmpeg
-/ffprobe
-/ffmpeg-photo
-/ffprobe-photo
+/dist/
 
 # Build progress tracking
 .build-progress

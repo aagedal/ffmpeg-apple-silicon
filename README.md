@@ -65,7 +65,7 @@ The script will:
 1. Check for required tools
 2. Show build progress (what's already built)
 3. Build all components in order
-4. Create `ffmpeg`/`ffprobe` (full build) and `ffmpeg-photo`/`ffprobe-photo` (image-only build) binaries in the project directory
+4. Create the binaries under `dist/<ffmpeg-version>/`: `full/ffmpeg` + `full/ffprobe` (full build) and `photo/ffmpeg` + `photo/ffprobe` (image-only build). Every variant keeps the plain `ffmpeg`/`ffprobe` names, and multiple FFmpeg versions can coexist side by side.
 
 **Note:** The build process takes several hours. You can safely interrupt (Ctrl+C) and resume later - the script tracks progress and skips already-built components.
 
@@ -135,8 +135,10 @@ ffmpeg_aagedal/
 ├── build/                # Build artifacts (created during build)
 ├── compiled/             # Compiled libraries (created during build)
 ├── .build-progress       # Build progress tracker
-├── ffmpeg                # Final FFmpeg binary (created after build)
-└── ffprobe               # Final FFprobe binary (created after build)
+└── dist/                 # Final binaries (created after build)
+    └── <version>/        # e.g. 8.1.1/
+        ├── full/         # ffmpeg + ffprobe (full build)
+        └── photo/        # ffmpeg + ffprobe (image-only build)
 ```
 
 ## Testing Your Build
@@ -147,11 +149,11 @@ Use the included verification script:
 ./tools/verify.sh
 ```
 
-Or manually verify JPEG XL support:
+Or manually verify JPEG XL support (binaries live under `dist/<version>/<variant>/`):
 
 ```bash
-./ffmpeg -version
-./ffmpeg -codecs | grep jxl
+./dist/8.1.1/full/ffmpeg -version
+./dist/8.1.1/full/ffmpeg -codecs | grep jxl
 ```
 
 Test macOS hardware acceleration:
@@ -180,17 +182,19 @@ Example encoding with JPEG XL:
 A much smaller image-only binary built by `scripts/12a-ffmpeg-photo.sh`. It decodes most common image formats (PNG, JPEG, JPEG 2000, JPEG XL, WebP, TIFF, BMP, GIF, AVIF, HEIC, PSD, EXR, DPX, TGA, PNM, QOI, and more) and encodes **AVIF** (via SVT-AV1 or libaom) and **JPEG XL** (via libjxl), plus WebP/PNG/JPEG/TIFF/EXR for convenience. No audio codecs, no general video codecs, no network.
 
 ```bash
+FFP=./dist/8.1.1/photo/ffmpeg
+
 # JPEG XL export (distance 0 = mathematically lossless, 1 ≈ visually lossless)
-./ffmpeg-photo -i input.png -c:v libjxl -distance 1 output.jxl
+$FFP -i input.png -c:v libjxl -distance 1 output.jxl
 
 # AVIF export with libaom (best still-image quality, supports lossless via -crf 0)
-./ffmpeg-photo -i input.jpg -c:v libaom-av1 -still-picture 1 -crf 28 output.avif
+$FFP -i input.jpg -c:v libaom-av1 -still-picture 1 -crf 28 output.avif
 
 # AVIF export with SVT-AV1 (faster)
-./ffmpeg-photo -i input.jpg -c:v libsvtav1 -crf 30 output.avif
+$FFP -i input.jpg -c:v libsvtav1 -crf 30 output.avif
 
 # Read HEIC/AVIF input
-./ffmpeg-photo -i photo.heic -c:v libjxl -distance 1 photo.jxl
+$FFP -i photo.heic -c:v libjxl -distance 1 photo.jxl
 ```
 
 Example using VideoToolbox (hardware acceleration):

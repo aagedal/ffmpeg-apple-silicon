@@ -6,13 +6,16 @@ source "$(dirname "$0")/../config.sh"
 
 COMPONENT="ffmpeg"
 
+OUT_DIR="${DIST_DIR}/${FFMPEG_VERSION}/full"
+
 if is_complete "${COMPONENT}"; then
     echo "[SKIP] ${COMPONENT} already built"
-    # Always ensure binaries are copied to workspace
+    # Always ensure binaries are copied to dist
     if [ -f "${BIN_DIR}/ffmpeg" ]; then
-        cp "${BIN_DIR}/ffmpeg" "${WORKSPACE}/ffmpeg"
-        cp "${BIN_DIR}/ffprobe" "${WORKSPACE}/ffprobe"
-        chmod +x "${WORKSPACE}/ffmpeg" "${WORKSPACE}/ffprobe"
+        mkdir -p "${OUT_DIR}"
+        cp "${BIN_DIR}/ffmpeg" "${OUT_DIR}/ffmpeg"
+        cp "${BIN_DIR}/ffprobe" "${OUT_DIR}/ffprobe"
+        chmod +x "${OUT_DIR}/ffmpeg" "${OUT_DIR}/ffprobe"
     fi
     exit 0
 fi
@@ -125,15 +128,16 @@ export PATH="${BIN_DIR}:${PATH}"
 make ${MAKEFLAGS}
 make install
 
-# Create a standalone binary by copying to workspace
-echo "Creating standalone binaries in workspace..."
-cp "${BIN_DIR}/ffmpeg" "${WORKSPACE}/ffmpeg"
-cp "${BIN_DIR}/ffprobe" "${WORKSPACE}/ffprobe"
-chmod +x "${WORKSPACE}/ffmpeg" "${WORKSPACE}/ffprobe"
+# Copy standalone binaries to dist
+echo "Creating standalone binaries in ${OUT_DIR}..."
+mkdir -p "${OUT_DIR}"
+cp "${BIN_DIR}/ffmpeg" "${OUT_DIR}/ffmpeg"
+cp "${BIN_DIR}/ffprobe" "${OUT_DIR}/ffprobe"
+chmod +x "${OUT_DIR}/ffmpeg" "${OUT_DIR}/ffprobe"
 
 echo ""
 echo "FFmpeg binaries created:"
-echo "  ${WORKSPACE}/ffmpeg"
-echo "  ${WORKSPACE}/ffprobe"
+echo "  ${OUT_DIR}/ffmpeg"
+echo "  ${OUT_DIR}/ffprobe"
 
 mark_complete "${COMPONENT}"

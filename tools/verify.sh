@@ -1,25 +1,25 @@
 #!/bin/bash
 
 # Verify FFmpeg Build Script
-# Run this after building to verify your FFmpeg binaries
+# Run this after building to verify your FFmpeg binaries (full variant)
+
+source "$(dirname "$0")/../config.sh"
 
 echo "=========================================="
 echo "FFmpeg Build Verification"
 echo "=========================================="
 echo ""
 
-# Check if binaries exist
-if [ ! -f "./ffmpeg" ]; then
-    echo "❌ ERROR: ffmpeg binary not found"
+# Check if binaries exist, then work from the dist folder
+FULL_DIR="${DIST_DIR}/${FFMPEG_VERSION}/full"
+
+if [ ! -f "${FULL_DIR}/ffmpeg" ] || [ ! -f "${FULL_DIR}/ffprobe" ]; then
+    echo "❌ ERROR: binaries not found in ${FULL_DIR}"
     echo "   Run ./build.sh first"
     exit 1
 fi
 
-if [ ! -f "./ffprobe" ]; then
-    echo "❌ ERROR: ffprobe binary not found"
-    echo "   Run ./build.sh first"
-    exit 1
-fi
+cd "${FULL_DIR}"
 
 echo "✅ Binaries found"
 echo ""
