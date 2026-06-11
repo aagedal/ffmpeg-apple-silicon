@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Build extra useful libraries (libass for subtitles, fdk-aac for AAC)
+# Build extra useful libraries (libass for subtitles)
 
 source "$(dirname "$0")/../config.sh"
 
@@ -77,23 +77,6 @@ if [ ! -d "libass-${LIBASS_VERSION}" ]; then
     tar xf "libass-${LIBASS_VERSION}.tar.xz"
     
     cd "libass-${LIBASS_VERSION}"
-    ./configure \
-        --prefix="${INSTALL_DIR}" \
-        --disable-shared \
-        --enable-static
-    
-    make ${MAKEFLAGS}
-    make install
-    cd "${SOURCE_DIR}"
-fi
-
-# Build fdk-aac (high-quality AAC encoder)
-echo "  Building fdk-aac ${FDK_AAC_VERSION}..."
-if [ ! -d "fdk-aac-${FDK_AAC_VERSION}" ]; then
-    curl -L -O "https://downloads.sourceforge.net/project/opencore-amr/fdk-aac/fdk-aac-${FDK_AAC_VERSION}.tar.gz"
-    tar xf "fdk-aac-${FDK_AAC_VERSION}.tar.gz"
-    
-    cd "fdk-aac-${FDK_AAC_VERSION}"
     ./configure \
         --prefix="${INSTALL_DIR}" \
         --disable-shared \

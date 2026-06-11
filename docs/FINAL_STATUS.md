@@ -24,7 +24,7 @@
 ### ⏳ Remaining (After JPEG XL)
 
 10. Audio codecs (Opus, Vorbis, LAME) - ~10-15 min
-11. Extra libraries (libass, FDK-AAC, fonts) - ~15-20 min
+11. Extra libraries (libass, fonts) - ~15-20 min
 12. **FFmpeg 8.0.1** - Final assembly - ~10-15 min
 
 ## All Issues Resolved ✅
@@ -79,7 +79,7 @@
 - ✅ **AV1** (libaom + SVT-AV1)
 - ✅ **VVC/H.266** (VVenC + VVdeC)
 - ✅ **Opus, Vorbis, MP3** audio codecs
-- ✅ **AAC** (FDK-AAC high quality)
+- ✅ **AAC** (native encoder + AudioToolbox aac_at)
 - ✅ **VideoToolbox** hardware acceleration
 - ✅ **AudioToolbox** macOS audio
 - ✅ **libass** subtitle rendering

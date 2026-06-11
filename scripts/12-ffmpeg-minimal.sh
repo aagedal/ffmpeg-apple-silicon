@@ -33,7 +33,6 @@ export PATH="${BIN_DIR}:${PATH}"
     --enable-static \
     --disable-shared \
     --enable-gpl \
-    --enable-nonfree \
     --enable-version3 \
     --disable-debug \
     --disable-doc \
@@ -59,7 +58,6 @@ export PATH="${BIN_DIR}:${PATH}"
     --enable-libvvenc \
     --enable-libopus \
     --enable-libmp3lame \
-    --enable-libfdk-aac \
     \
     --enable-videotoolbox \
     --enable-audiotoolbox \
@@ -73,12 +71,14 @@ export PATH="${BIN_DIR}:${PATH}"
     --enable-encoder=libvvenc \
     --enable-encoder=libopus \
     --enable-encoder=libmp3lame \
-    --enable-encoder=libfdk_aac \
+    --enable-encoder=aac \
+    --enable-encoder=aac_at \
     --enable-encoder=h264_videotoolbox \
     --enable-encoder=hevc_videotoolbox \
     --enable-encoder=prores_videotoolbox \
     \
-    --enable-decoder=libfdk_aac \
+    --enable-decoder=aac \
+    --enable-decoder=aac_at \
     \
     --enable-filter=scale \
     --enable-filter=overlay

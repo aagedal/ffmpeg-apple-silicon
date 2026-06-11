@@ -43,7 +43,6 @@ export PATH="${BIN_DIR}:${PATH}"
     --enable-static \
     --disable-shared \
     --enable-gpl \
-    --enable-nonfree \
     --enable-version3 \
     --disable-debug \
     --disable-doc \
@@ -76,7 +75,6 @@ export PATH="${BIN_DIR}:${PATH}"
     --enable-libopus \
     --enable-libvorbis \
     --enable-libmp3lame \
-    --enable-libfdk-aac \
     --enable-libtheora \
     --enable-libopenjpeg \
     --enable-libvmaf \
@@ -98,7 +96,8 @@ export PATH="${BIN_DIR}:${PATH}"
     --enable-encoder=libopus \
     --enable-encoder=libvorbis \
     --enable-encoder=libmp3lame \
-    --enable-encoder=libfdk_aac \
+    --enable-encoder=aac \
+    --enable-encoder=aac_at \
     --enable-encoder=flac \
     --enable-encoder=libtheora \
     --enable-encoder=libopenjpeg \
@@ -108,7 +107,8 @@ export PATH="${BIN_DIR}:${PATH}"
     \
     --enable-decoder=libopenjpeg \
     --enable-decoder=libjxl \
-    --enable-decoder=libfdk_aac \
+    --enable-decoder=aac \
+    --enable-decoder=aac_at \
     --enable-decoder=flac \
     --enable-decoder=vvc \
     --enable-decoder=theora \

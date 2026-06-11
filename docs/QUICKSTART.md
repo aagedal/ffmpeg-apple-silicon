@@ -139,7 +139,7 @@ rm -rf sources/ build/ compiled/ .build-progress
 8. **VVdeC** - VVC (H.266) decoder
 9. **libjxl** - JPEG XL encoder/decoder ✨
 10. **Audio codecs** - Opus, Vorbis, LAME MP3
-11. **Extra libs** - libass (subtitles), FDK-AAC
+11. **Extra libs** - libass (subtitles)
 12. **FFmpeg** - Main application with all codecs + VideoToolbox
 
 ## Distribution

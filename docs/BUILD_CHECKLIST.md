@@ -33,7 +33,7 @@ The build script will automatically build these in order. You can also check pro
 - [ ] **10-audio** - Opus, Vorbis, LAME MP3 (includes libogg)
 
 ### Additional Libraries
-- [ ] **11-extras** - libass, FDK-AAC, freetype, harfbuzz, fribidi, libpng
+- [ ] **11-extras** - libass, freetype, harfbuzz, fribidi, libpng
 
 ### Final Application
 - [ ] **12-ffmpeg** - FFmpeg with all codecs + VideoToolbox/AudioToolbox

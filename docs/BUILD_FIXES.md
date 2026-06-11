@@ -100,7 +100,7 @@ Progress: 4/12 components built
 [ ] VVdeC (VVC decoder)
 [ ] libjxl (JPEG XL) ⭐ YOUR KEY REQUIREMENT
 [ ] Audio codecs (Opus, Vorbis, LAME)
-[ ] Extra libraries (libass, FDK-AAC)
+[ ] Extra libraries (libass)
 [ ] FFmpeg 8.0.1
 ```
 

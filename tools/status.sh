@@ -20,8 +20,9 @@ BUILD_COMPONENTS=(
     "vvdec:VVdeC (VVC decoder)"
     "libjxl:libjxl (JPEG XL)"
     "audio-codecs:Audio codecs (Opus, Vorbis, LAME)"
-    "extras:Extra libraries (libass, FDK-AAC)"
+    "extras:Extra libraries (libass)"
     "ffmpeg:FFmpeg"
+    "ffmpeg-photo:FFmpeg (Photo Edition)"
 )
 
 TOTAL=${#BUILD_COMPONENTS[@]}

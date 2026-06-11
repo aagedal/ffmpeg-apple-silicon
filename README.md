@@ -10,8 +10,8 @@ This repository contains a modular build system for creating a custom static FFm
 - **x264** (stable) - H.264/AVC encoding
 - **x265** (master) - HEVC/H.265 encoding (with high bit depth)
 - **libvpx** 1.16.0 - VP8/VP9 encoding/decoding
-- **libaom** 3.13.2 - AV1 encoding/decoding
-- **SVT-AV1** 4.0.1 - Fast AV1 encoding
+- **libaom** 3.14.1 - AV1 encoding/decoding
+- **SVT-AV1** 4.1.0 - Fast AV1 encoding
 - **VVenC** 1.14.0 / **VVdeC** 3.1.0 - VVC (H.266) encoding/decoding
 - **libjxl** 0.11.2 - JPEG XL encoding/decoding ✨
 - **libwebp** 1.6.0 - WebP image/animation encoding
@@ -22,12 +22,12 @@ This repository contains a modular build system for creating a custom static FFm
 - **Opus** 1.6.1 - Modern audio codec
 - **Vorbis** 1.3.7 / **libogg** 1.3.6 - Ogg Vorbis
 - **LAME** 3.100 - MP3 encoding
-- **FDK-AAC** 2.0.3 - High-quality AAC encoding
+- **AAC** - FFmpeg native encoder + AudioToolbox (`aac_at`) hardware-assisted encoding
 
 ### Additional Features
-- **Whisper** 1.8.4 - Speech recognition/transcription filter
+- **Whisper** 1.8.6 - Speech recognition/transcription filter
 - **libass** 0.17.4 - Advanced subtitle rendering
-- **Freetype** 2.14.2 / **Fribidi** 1.0.16 - Font rendering and bidirectional text
+- **Freetype** 2.14.3 / **Fribidi** 1.0.16 - Font rendering and bidirectional text
 - **VideoToolbox** - macOS hardware-accelerated encoding (H.264, HEVC, ProRes)
 - **AudioToolbox** - macOS audio processing
 - **NEON optimizations** - ARM64 SIMD instructions for better performance
@@ -65,7 +65,7 @@ The script will:
 1. Check for required tools
 2. Show build progress (what's already built)
 3. Build all components in order
-4. Create `ffmpeg` and `ffprobe` binaries in the project directory
+4. Create `ffmpeg`/`ffprobe` (full build) and `ffmpeg-photo`/`ffprobe-photo` (image-only build) binaries in the project directory
 
 **Note:** The build process takes several hours. You can safely interrupt (Ctrl+C) and resume later - the script tracks progress and skips already-built components.
 
@@ -86,7 +86,7 @@ Current build order:
 8. VVdeC (VVC decoder)
 9. libjxl (JPEG XL)
 10. Audio codecs (Opus, Vorbis, LAME)
-11. Extra libraries (libass, FDK-AAC)
+11. Extra libraries (libass)
 12. FFmpeg
 
 ## Manual Building
@@ -175,6 +175,24 @@ Example encoding with JPEG XL:
 ./ffmpeg -i input.mp4 -c:v libjxl output.jxl
 ```
 
+### Photo Edition (`ffmpeg-photo`)
+
+A much smaller image-only binary built by `scripts/12a-ffmpeg-photo.sh`. It decodes most common image formats (PNG, JPEG, JPEG 2000, JPEG XL, WebP, TIFF, BMP, GIF, AVIF, HEIC, PSD, EXR, DPX, TGA, PNM, QOI, and more) and encodes **AVIF** (via SVT-AV1 or libaom) and **JPEG XL** (via libjxl), plus WebP/PNG/JPEG/TIFF/EXR for convenience. No audio codecs, no general video codecs, no network.
+
+```bash
+# JPEG XL export (distance 0 = mathematically lossless, 1 ≈ visually lossless)
+./ffmpeg-photo -i input.png -c:v libjxl -distance 1 output.jxl
+
+# AVIF export with libaom (best still-image quality, supports lossless via -crf 0)
+./ffmpeg-photo -i input.jpg -c:v libaom-av1 -still-picture 1 -crf 28 output.avif
+
+# AVIF export with SVT-AV1 (faster)
+./ffmpeg-photo -i input.jpg -c:v libsvtav1 -crf 30 output.avif
+
+# Read HEIC/AVIF input
+./ffmpeg-photo -i photo.heic -c:v libjxl -distance 1 photo.jxl
+```
+
 Example using VideoToolbox (hardware acceleration):
 
 ```bash
@@ -190,7 +208,7 @@ Edit `config.sh` and modify the version variables:
 
 ```bash
 export LIBJXL_VERSION="0.11.2"
-export FFMPEG_VERSION="8.1"
+export FFMPEG_VERSION="8.1.1"
 # ... etc
 ```
 
@@ -266,12 +284,14 @@ file ./ffmpeg
 
 ## License Notes
 
-This build includes GPL and non-free components:
-- GPL: x264, x265, FFmpeg (with GPL components)
-- LGPL: Many codecs (can be used in closed-source if built as LGPL)
-- Non-free: FDK-AAC (requires `--enable-nonfree`)
+This build is configured with `--enable-gpl --enable-version3` and contains **no non-free components**, so the resulting binaries are licensed under the **GPL version 3** and are redistributable under its terms:
+- GPL: x264, x265, FFmpeg GPL components
+- (L)GPL v3 (the reason for `--enable-version3`): libvmaf and other version3-licensed parts
+- LGPL/BSD: most remaining codec libraries
 
-Ensure you comply with the appropriate licenses for your use case.
+FDK-AAC is intentionally **not** included: it is non-free and GPL-incompatible, and any FFmpeg build with `--enable-nonfree` is not legally redistributable. AAC encoding is provided by FFmpeg's native `aac` encoder and macOS AudioToolbox (`aac_at`) instead.
+
+Ensure you comply with the GPLv3 (source availability, license notice) when redistributing the binaries.
 
 ## Credits
 

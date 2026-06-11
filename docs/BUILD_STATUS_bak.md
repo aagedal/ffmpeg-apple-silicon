@@ -13,7 +13,7 @@
 [✓] VVdeC (VVC decoder)
 [ ] libjxl (JPEG XL) ⭐ YOUR KEY REQUIREMENT - NEXT
 [ ] Audio codecs (Opus, Vorbis, LAME)
-[ ] Extra libraries (libass, FDK-AAC)
+[ ] Extra libraries (libass)
 [ ] FFmpeg 8.0.1
 ```
 
@@ -81,7 +81,7 @@ When complete (very soon!):
 - ✅ Opus - Modern low-latency codec
 - ✅ Vorbis - Ogg Vorbis
 - ✅ MP3 - LAME encoder
-- ✅ AAC - FDK-AAC high quality
+- ✅ AAC - native encoder + AudioToolbox aac_at
 
 ### Apple Silicon Features
 - ✅ **VideoToolbox** - H.264/HEVC/ProRes hardware encoding
