@@ -164,6 +164,7 @@ mkdir -p "${OUT_DIR}"
 cp "ffmpeg" "${OUT_DIR}/ffmpeg"
 cp "ffprobe" "${OUT_DIR}/ffprobe"
 chmod +x "${OUT_DIR}/ffmpeg" "${OUT_DIR}/ffprobe"
+write_dist_readme "${OUT_DIR}" "photo"
 
 echo ""
 echo "FFmpeg (Photo Edition) binaries created:"

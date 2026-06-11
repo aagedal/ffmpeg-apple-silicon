@@ -93,6 +93,7 @@ mkdir -p "${OUT_DIR}"
 cp "${BIN_DIR}/ffmpeg" "${OUT_DIR}/ffmpeg"
 cp "${BIN_DIR}/ffprobe" "${OUT_DIR}/ffprobe"
 chmod +x "${OUT_DIR}/ffmpeg" "${OUT_DIR}/ffprobe"
+write_dist_readme "${OUT_DIR}" "minimal"
 
 echo ""
 echo "FFmpeg binaries created:"

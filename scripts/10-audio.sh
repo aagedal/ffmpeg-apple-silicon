@@ -39,6 +39,8 @@ if [ ! -d "libvorbis-${VORBIS_VERSION}" ]; then
     tar xf "libvorbis-${VORBIS_VERSION}.tar.gz"
     
     cd "libvorbis-${VORBIS_VERSION}"
+    # configure.ac injects -force_cpusubtype_ALL on Darwin; modern Xcode ld rejects it
+    sed -i '' 's/-force_cpusubtype_ALL //g' configure.ac
     autoreconf -fiv
     ./configure \
         --prefix="${INSTALL_DIR}" \
@@ -46,11 +48,8 @@ if [ ! -d "libvorbis-${VORBIS_VERSION}" ]; then
         --enable-static \
         --disable-dependency-tracking
 
-    # Fix libtool for Apple Silicon
-    sed -i '' 's/-force_cpusubtype_ALL//g' libtool
-
-    make ${MAKEFLAGS} -k || true
-    make install || true
+    make ${MAKEFLAGS}
+    make install
     cd "${SOURCE_DIR}"
 fi
 

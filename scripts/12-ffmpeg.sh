@@ -16,6 +16,7 @@ if is_complete "${COMPONENT}"; then
         cp "${BIN_DIR}/ffmpeg" "${OUT_DIR}/ffmpeg"
         cp "${BIN_DIR}/ffprobe" "${OUT_DIR}/ffprobe"
         chmod +x "${OUT_DIR}/ffmpeg" "${OUT_DIR}/ffprobe"
+        write_dist_readme "${OUT_DIR}" "full"
     fi
     exit 0
 fi
@@ -134,6 +135,7 @@ mkdir -p "${OUT_DIR}"
 cp "${BIN_DIR}/ffmpeg" "${OUT_DIR}/ffmpeg"
 cp "${BIN_DIR}/ffprobe" "${OUT_DIR}/ffprobe"
 chmod +x "${OUT_DIR}/ffmpeg" "${OUT_DIR}/ffprobe"
+write_dist_readme "${OUT_DIR}" "full"
 
 echo ""
 echo "FFmpeg binaries created:"

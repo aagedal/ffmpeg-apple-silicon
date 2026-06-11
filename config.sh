@@ -81,6 +81,81 @@ mark_complete() {
     echo "[✓] ${component} completed"
 }
 
+# Write a README.md next to the dist binaries documenting the build:
+# variant, date, license, configure flags (read from the binary itself),
+# and the versions of the external libraries that variant links
+write_dist_readme() {
+    local out_dir="$1"
+    local variant="$2"
+    local bin="${out_dir}/ffmpeg"
+    local conf
+
+    [ -x "${bin}" ] || return 0
+
+    # Guard: the dist binaries must be fully static apart from system libs.
+    # A Homebrew dylib reference means a dependency silently failed to build
+    # statically (it also crashes under hardened-runtime signing).
+    if otool -L "${bin}" "${out_dir}/ffprobe" 2>/dev/null | grep -q "/opt/homebrew"; then
+        echo "ERROR: ${out_dir} binaries link Homebrew dylibs — not static:" >&2
+        otool -L "${bin}" "${out_dir}/ffprobe" | grep "/opt/homebrew" >&2
+        return 1
+    fi
+
+    conf="$("${bin}" -buildconf 2>/dev/null)"
+    if [ -z "${conf}" ]; then
+        echo "ERROR: ${bin} failed to execute — cannot write build manifest" >&2
+        return 1
+    fi
+
+    {
+        echo "# FFmpeg ${FFMPEG_VERSION} — ${variant} build"
+        echo ""
+        echo "Static arm64 (Apple Silicon) binaries: \`ffmpeg\`, \`ffprobe\`"
+        echo ""
+        echo "- Built: $(date '+%Y-%m-%d %H:%M %Z') on macOS $(sw_vers -productVersion)"
+        echo "- Minimum macOS: ${MACOSX_DEPLOYMENT_TARGET} (Apple Silicon only)"
+        echo "- License: GPL version 3 or later (no nonfree components)"
+        echo ""
+        echo "## External libraries"
+        echo ""
+
+        local entry name ver desc
+        for entry in \
+            "libx264:${X264_VERSION:-}:H.264/AVC encoder" \
+            "libx265:${X265_VERSION:-}:HEVC/H.265 encoder" \
+            "libvpx:${LIBVPX_VERSION:-}:VP8/VP9" \
+            "libaom:${LIBAOM_VERSION:-}:AV1 encoder/decoder" \
+            "libsvtav1:${SVT_AV1_VERSION:-}:SVT-AV1 encoder" \
+            "libvvenc:${VVENC_VERSION:-}:VVC/H.266 encoder" \
+            "libjxl:${LIBJXL_VERSION:-}:JPEG XL (with brotli ${BROTLI_VERSION:-}, highway ${HIGHWAY_VERSION:-})" \
+            "libwebp:${LIBWEBP_VERSION:-}:WebP encoder" \
+            "libopus:${OPUS_VERSION:-}:Opus audio" \
+            "libvorbis:${VORBIS_VERSION:-}:Vorbis audio (with libogg ${OGG_VERSION:-})" \
+            "libmp3lame:${LAME_VERSION:-}:MP3 encoder" \
+            "libtheora:${THEORA_VERSION:-}:Theora video" \
+            "libopenjpeg:${OPENJPEG_VERSION:-}:JPEG 2000" \
+            "libvmaf:${VMAF_VERSION:-}:VMAF quality metric" \
+            "whisper:${WHISPER_VERSION:-}:whisper.cpp speech recognition"
+        do
+            name="${entry%%:*}"
+            ver="$(echo "${entry}" | cut -d: -f2)"
+            desc="${entry#*:*:}"
+            if echo "${conf}" | grep -q -- "--enable-${name}"; then
+                echo "- ${name} ${ver} — ${desc}"
+            fi
+        done
+
+        echo ""
+        echo "## Configure flags"
+        echo ""
+        echo '```'
+        echo "${conf}"
+        echo '```'
+    } > "${out_dir}/README.md"
+
+    echo "Build manifest written: ${out_dir}/README.md"
+}
+
 # Helper function to check if component is already built
 is_complete() {
     local component="$1"
