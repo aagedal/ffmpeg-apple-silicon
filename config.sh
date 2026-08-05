@@ -66,10 +66,10 @@ export LIBWEBP_VERSION="1.6.0"
 export FLAC_VERSION="1.5.0"
 export THEORA_VERSION="1.2.0"
 export LIBBLURAY_VERSION="1.4.1"
-export WHISPER_VERSION="1.8.6"
+export WHISPER_VERSION="1.9.2"
 export OPENJPEG_VERSION="2.5.4"
 export VMAF_VERSION="3.1.0"
-export FFMPEG_VERSION="8.1.1"
+export FFMPEG_VERSION="9.0"
 
 # Progress tracking
 export PROGRESS_FILE="${WORKSPACE}/.build-progress"

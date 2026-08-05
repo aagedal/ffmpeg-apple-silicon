@@ -25,7 +25,7 @@ This repository contains a modular build system for creating a custom static FFm
 - **AAC** - FFmpeg native encoder + AudioToolbox (`aac_at`) hardware-assisted encoding
 
 ### Additional Features
-- **Whisper** 1.8.6 - Speech recognition/transcription filter
+- **Whisper** 1.9.2 - Speech recognition/transcription filter
 - **libass** 0.17.4 - Advanced subtitle rendering
 - **Freetype** 2.14.3 / **Fribidi** 1.0.16 - Font rendering and bidirectional text
 - **VideoToolbox** - macOS hardware-accelerated encoding (H.264, HEVC, ProRes)
@@ -136,7 +136,7 @@ ffmpeg_aagedal/
 ├── compiled/             # Compiled libraries (created during build)
 ├── .build-progress       # Build progress tracker
 └── dist/                 # Final binaries (created after build)
-    └── <version>/        # e.g. 8.1.1/
+    └── <version>/        # e.g. 9.0/
         ├── full/         # ffmpeg + ffprobe (full build)
         └── photo/        # ffmpeg + ffprobe (image-only build)
 ```
@@ -152,8 +152,8 @@ Use the included verification script:
 Or manually verify JPEG XL support (binaries live under `dist/<version>/<variant>/`):
 
 ```bash
-./dist/8.1.1/full/ffmpeg -version
-./dist/8.1.1/full/ffmpeg -codecs | grep jxl
+./dist/9.0/full/ffmpeg -version
+./dist/9.0/full/ffmpeg -codecs | grep jxl
 ```
 
 Test macOS hardware acceleration:
@@ -182,7 +182,7 @@ Example encoding with JPEG XL:
 A much smaller image-only binary built by `scripts/12a-ffmpeg-photo.sh`. It decodes most common image formats (PNG, JPEG, JPEG 2000, JPEG XL, WebP, TIFF, BMP, GIF, AVIF, HEIC, PSD, EXR, DPX, TGA, PNM, QOI, and more) and encodes **AVIF** (via SVT-AV1 or libaom) and **JPEG XL** (via libjxl), plus WebP/PNG/JPEG/TIFF/EXR for convenience. No audio codecs, no general video codecs, no network.
 
 ```bash
-FFP=./dist/8.1.1/photo/ffmpeg
+FFP=./dist/9.0/photo/ffmpeg
 
 # JPEG XL export (distance 0 = mathematically lossless, 1 ≈ visually lossless)
 $FFP -i input.png -c:v libjxl -distance 1 output.jxl
@@ -212,7 +212,7 @@ Edit `config.sh` and modify the version variables:
 
 ```bash
 export LIBJXL_VERSION="0.11.2"
-export FFMPEG_VERSION="8.1.1"
+export FFMPEG_VERSION="9.0"
 # ... etc
 ```
 
