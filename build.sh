@@ -57,6 +57,27 @@ fi
 echo "All required tools found!"
 echo ""
 
+while true; do
+    read -r -p "Start a clean build or continue the existing build? [c]lean/[r]esume: " build_mode
+    case "${build_mode}" in
+        c|C|clean|Clean|CLEAN)
+            echo "Cleaning previous build artifacts and progress..."
+            rm -rf "${BUILD_DIR}" "${SOURCE_DIR}" "${INSTALL_DIR}" "${DIST_DIR}"
+            rm -f "${PROGRESS_FILE}"
+            mkdir -p "${BUILD_DIR}" "${SOURCE_DIR}" "${INSTALL_DIR}" "${BIN_DIR}" "${LIB_DIR}" "${INCLUDE_DIR}"
+            echo "Clean build selected."
+            break
+            ;;
+        r|R|resume|Resume|RESUME)
+            echo "Continuing existing build."
+            break
+            ;;
+        *)
+            echo "Please enter c for clean or r to continue."
+            ;;
+    esac
+done
+
 # Build components in order
 BUILD_SCRIPTS=(
     "01-nasm.sh"
