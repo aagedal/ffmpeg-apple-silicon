@@ -17,8 +17,8 @@ cd "${SOURCE_DIR}"
 
 # Download and extract libtheora
 if [ ! -d "libtheora-${THEORA_VERSION}" ]; then
-    curl -L -o "libtheora-${THEORA_VERSION}.tar.gz" \
-        "https://downloads.xiph.org/releases/theora/libtheora-${THEORA_VERSION}.tar.gz"
+    download_file "https://downloads.xiph.org/releases/theora/libtheora-${THEORA_VERSION}.tar.gz" \
+        "libtheora-${THEORA_VERSION}.tar.gz"
     tar xf "libtheora-${THEORA_VERSION}.tar.gz"
 fi
 

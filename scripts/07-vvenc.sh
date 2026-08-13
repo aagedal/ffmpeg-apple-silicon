@@ -11,17 +11,18 @@ if is_complete "${COMPONENT}"; then
     exit 0
 fi
 
-echo "Building VVenC (from git master)..."
+echo "Building VVenC ${VVENC_VERSION}..."
 
 cd "${SOURCE_DIR}"
 
-# Use git clone for more reliable builds
-if [ ! -d "vvenc" ]; then
-    git clone --depth 1 https://github.com/fraunhoferhhi/vvenc.git
+if [ ! -d "vvenc-${VVENC_VERSION}" ]; then
+    download_file "https://github.com/fraunhoferhhi/vvenc/archive/refs/tags/v${VVENC_VERSION}.tar.gz" \
+        "vvenc-${VVENC_VERSION}.tar.gz"
+    tar xf "vvenc-${VVENC_VERSION}.tar.gz"
 fi
 
-mkdir -p "vvenc/build"
-cd "vvenc/build"
+mkdir -p "vvenc-${VVENC_VERSION}/build"
+cd "vvenc-${VVENC_VERSION}/build"
 
 cmake \
     -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \

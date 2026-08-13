@@ -17,16 +17,17 @@ cd "${SOURCE_DIR}"
 
 # Download and extract whisper.cpp
 if [ ! -d "whisper.cpp-${WHISPER_VERSION}" ]; then
-    curl -L -o "whisper.cpp-${WHISPER_VERSION}.tar.gz" \
-        "https://github.com/ggml-org/whisper.cpp/archive/refs/tags/v${WHISPER_VERSION}.tar.gz"
+    download_file "https://github.com/ggml-org/whisper.cpp/archive/refs/tags/v${WHISPER_VERSION}.tar.gz" \
+        "whisper.cpp-${WHISPER_VERSION}.tar.gz"
     tar xf "whisper.cpp-${WHISPER_VERSION}.tar.gz"
 fi
 
 mkdir -p "whisper.cpp-${WHISPER_VERSION}/build"
 cd "whisper.cpp-${WHISPER_VERSION}/build"
 
-# Build whisper.cpp with static library and Apple Silicon optimizations
-# Disable OpenMP to simplify static linking with FFmpeg
+# Build whisper.cpp with a static library and Metal acceleration.
+# Accelerate/BLAS is disabled because recent SDKs emit a macOS 13.3-only
+# NEWLAPACK symbol, while this project targets macOS 11.0.
 cmake \
     -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
     -DCMAKE_OSX_ARCHITECTURES=arm64 \
@@ -35,9 +36,8 @@ cmake \
     -DWHISPER_BUILD_TESTS=OFF \
     -DWHISPER_BUILD_EXAMPLES=OFF \
     -DGGML_METAL=ON \
-    -DGGML_ACCELERATE=ON \
-    -DGGML_BLAS=ON \
-    -DGGML_BLAS_VENDOR=Apple \
+    -DGGML_ACCELERATE=OFF \
+    -DGGML_BLAS=OFF \
     -DGGML_OPENMP=OFF \
     ..
 
@@ -55,8 +55,8 @@ includedir=\${prefix}/include
 Name: whisper
 Description: OpenAI Whisper speech recognition library (whisper.cpp)
 Version: ${WHISPER_VERSION}
-Libs: -L\${libdir} -lwhisper -lggml -lggml-base -lggml-cpu -lggml-metal -lggml-blas
-Libs.private: -framework Accelerate -framework Metal -framework Foundation -lc++
+Libs: -L\${libdir} -lwhisper -lggml -lggml-base -lggml-cpu -lggml-metal
+Libs.private: -framework Metal -framework Foundation -lc++
 Cflags: -I\${includedir}
 EOF
 

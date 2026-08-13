@@ -18,7 +18,7 @@ echo "Building libvmaf ${VMAF_VERSION}..."
 cd "${SOURCE_DIR}"
 
 if [ ! -d "vmaf-${VMAF_VERSION}" ]; then
-    curl -L -O "https://github.com/Netflix/vmaf/archive/v${VMAF_VERSION}.tar.gz"
+    download_file "https://github.com/Netflix/vmaf/archive/v${VMAF_VERSION}.tar.gz" "v${VMAF_VERSION}.tar.gz"
     tar xf "v${VMAF_VERSION}.tar.gz"
 fi
 

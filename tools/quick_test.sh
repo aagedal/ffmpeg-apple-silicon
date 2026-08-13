@@ -13,7 +13,7 @@ cd "$SCRIPT_DIR"
 
 # Use the full-variant dist binary for the configured version
 source "${SCRIPT_DIR}/../config.sh" >/dev/null
-FFMPEG="${DIST_DIR}/${FFMPEG_VERSION}/full/ffmpeg"
+FFMPEG="${OUTPUT_DIR}/${FFMPEG_VERSION}/full/ffmpeg"
 
 # Colors
 GREEN='\033[0;32m'

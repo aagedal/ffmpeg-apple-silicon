@@ -20,7 +20,13 @@ BUILD_COMPONENTS=(
     "vvdec:VVdeC (VVC decoder)"
     "libjxl:libjxl (JPEG XL)"
     "audio-codecs:Audio codecs (Opus, Vorbis, LAME)"
+    "libwebp:libwebp (WebP)"
+    "flac:FLAC"
+    "theora:libtheora"
+    "openjpeg:OpenJPEG (JPEG 2000)"
     "extras:Extra libraries (libass)"
+    "whisper:whisper.cpp"
+    "vmaf:VMAF"
     "ffmpeg:FFmpeg"
     "ffmpeg-photo:FFmpeg (Photo Edition)"
 )
@@ -49,8 +55,8 @@ if [ $COMPLETED -eq $TOTAL ]; then
     echo ""
     echo "Build complete! 🎉"
     echo ""
-    if [ -f "${DIST_DIR}/${FFMPEG_VERSION}/full/ffmpeg" ]; then
-        echo "Binaries: ${DIST_DIR}/${FFMPEG_VERSION}/{full,photo}/{ffmpeg,ffprobe}"
+    if [ -f "${OUTPUT_DIR}/${FFMPEG_VERSION}/full/ffmpeg" ]; then
+        echo "Binaries: ${OUTPUT_DIR}/${FFMPEG_VERSION}/{full,photo}/{ffmpeg,ffprobe}"
         echo ""
         echo "Quick test:"
         echo "  ./dist/${FFMPEG_VERSION}/full/ffmpeg -version"

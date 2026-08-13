@@ -18,7 +18,7 @@ cd "${SOURCE_DIR}"
 # Build libogg (required for Vorbis and Opus)
 echo "  Building libogg ${OGG_VERSION}..."
 if [ ! -d "libogg-${OGG_VERSION}" ]; then
-    curl -L -O "https://downloads.xiph.org/releases/ogg/libogg-${OGG_VERSION}.tar.gz"
+    download_file "https://downloads.xiph.org/releases/ogg/libogg-${OGG_VERSION}.tar.gz" "libogg-${OGG_VERSION}.tar.gz"
     tar xf "libogg-${OGG_VERSION}.tar.gz"
     
     cd "libogg-${OGG_VERSION}"
@@ -35,7 +35,7 @@ fi
 # Build libvorbis
 echo "  Building libvorbis ${VORBIS_VERSION}..."
 if [ ! -d "libvorbis-${VORBIS_VERSION}" ]; then
-    curl -L -O "https://downloads.xiph.org/releases/vorbis/libvorbis-${VORBIS_VERSION}.tar.gz"
+    download_file "https://downloads.xiph.org/releases/vorbis/libvorbis-${VORBIS_VERSION}.tar.gz" "libvorbis-${VORBIS_VERSION}.tar.gz"
     tar xf "libvorbis-${VORBIS_VERSION}.tar.gz"
     
     cd "libvorbis-${VORBIS_VERSION}"
@@ -56,7 +56,7 @@ fi
 # Build opus
 echo "  Building opus ${OPUS_VERSION}..."
 if [ ! -d "opus-${OPUS_VERSION}" ]; then
-    curl -L -O "https://downloads.xiph.org/releases/opus/opus-${OPUS_VERSION}.tar.gz"
+    download_file "https://downloads.xiph.org/releases/opus/opus-${OPUS_VERSION}.tar.gz" "opus-${OPUS_VERSION}.tar.gz"
     tar xf "opus-${OPUS_VERSION}.tar.gz"
     
     cd "opus-${OPUS_VERSION}"
@@ -73,19 +73,20 @@ fi
 # Build LAME MP3
 echo "  Building LAME ${LAME_VERSION}..."
 if [ ! -d "lame-${LAME_VERSION}" ]; then
-    curl -L -O "https://downloads.sourceforge.net/project/lame/lame/${LAME_VERSION}/lame-${LAME_VERSION}.tar.gz"
+    download_file "https://downloads.sourceforge.net/project/lame/lame/${LAME_VERSION}/lame-${LAME_VERSION}.tar.gz" "lame-${LAME_VERSION}.tar.gz"
     tar xf "lame-${LAME_VERSION}.tar.gz"
-    
-    cd "lame-${LAME_VERSION}"
-    ./configure \
-        --prefix="${INSTALL_DIR}" \
-        --disable-shared \
-        --enable-static \
-        --disable-frontend
-    
-    make ${MAKEFLAGS}
-    make install
-    cd "${SOURCE_DIR}"
 fi
+
+cd "lame-${LAME_VERSION}"
+./configure \
+    --prefix="${INSTALL_DIR}" \
+    --disable-shared \
+    --enable-static \
+    --disable-decoder \
+    --disable-frontend
+
+make ${MAKEFLAGS}
+make install
+cd "${SOURCE_DIR}"
 
 mark_complete "${COMPONENT}"

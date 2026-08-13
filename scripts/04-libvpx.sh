@@ -16,7 +16,7 @@ echo "Building libvpx ${LIBVPX_VERSION}..."
 cd "${SOURCE_DIR}"
 
 if [ ! -d "libvpx-${LIBVPX_VERSION}" ]; then
-    curl -L -O "https://github.com/webmproject/libvpx/archive/v${LIBVPX_VERSION}.tar.gz"
+    download_file "https://github.com/webmproject/libvpx/archive/v${LIBVPX_VERSION}.tar.gz" "v${LIBVPX_VERSION}.tar.gz"
     tar xf "v${LIBVPX_VERSION}.tar.gz"
 fi
 

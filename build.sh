@@ -62,7 +62,7 @@ while true; do
     case "${build_mode}" in
         c|C|clean|Clean|CLEAN)
             echo "Cleaning previous build artifacts and progress..."
-            rm -rf "${BUILD_DIR}" "${SOURCE_DIR}" "${INSTALL_DIR}" "${DIST_DIR}"
+            rm -rf "${BUILD_DIR}" "${SOURCE_DIR}" "${INSTALL_DIR}" "${OUTPUT_DIR}"
             rm -f "${PROGRESS_FILE}"
             mkdir -p "${BUILD_DIR}" "${SOURCE_DIR}" "${INSTALL_DIR}" "${BIN_DIR}" "${LIB_DIR}" "${INCLUDE_DIR}"
             echo "Clean build selected."
@@ -109,12 +109,20 @@ TOTAL=${#BUILD_SCRIPTS[@]}
 COMPLETED=0
 
 for script in "${BUILD_SCRIPTS[@]}"; do
-    component_name=$(basename "$script" .sh)
-    component_name=${component_name#??-}  # Remove number prefix
+    script_path="${WORKSPACE}/scripts/${script}"
+    if [ ! -f "${script_path}" ]; then
+        echo "ERROR: Required script not found: ${script_path}" >&2
+        exit 1
+    fi
+    component_name="$(sed -n 's/^COMPONENT="\([^"]*\)"/\1/p' "${script_path}" | head -1)"
+    if [ -z "${component_name}" ]; then
+        echo "ERROR: ${script_path} does not declare COMPONENT" >&2
+        exit 1
+    fi
     
     if is_complete "$component_name" 2>/dev/null; then
         echo "[✓] $component_name"
-        ((COMPLETED++))
+        COMPLETED=$((COMPLETED + 1))
     else
         echo "[ ] $component_name"
     fi
@@ -128,8 +136,8 @@ if [ $COMPLETED -eq $TOTAL ]; then
     echo "All components already built!"
     echo ""
     echo "FFmpeg binaries are located at:"
-    echo "  ${DIST_DIR}/${FFMPEG_VERSION}/full/ffmpeg     (+ ffprobe)"
-    echo "  ${DIST_DIR}/${FFMPEG_VERSION}/photo/ffmpeg    (+ ffprobe; image-only: most formats in, AVIF/JXL out)"
+    echo "  ${OUTPUT_DIR}/${FFMPEG_VERSION}/full/ffmpeg     (+ ffprobe)"
+    echo "  ${OUTPUT_DIR}/${FFMPEG_VERSION}/photo/ffmpeg    (+ ffprobe; image-only: most formats in, AVIF/JXL out)"
     echo ""
     exit 0
 fi
@@ -152,15 +160,14 @@ for script in "${BUILD_SCRIPTS[@]}"; do
         echo "=========================================="
         
         chmod +x "$script_path"
-        bash "$script_path"
-        
-        if [ $? -ne 0 ]; then
+        if ! bash "$script_path"; then
             echo "ERROR: Build failed at $script"
             echo "You can fix the issue and re-run this script to continue"
             exit 1
         fi
     else
-        echo "WARNING: Script not found: $script_path"
+        echo "ERROR: Required script not found: $script_path" >&2
+        exit 1
     fi
 done
 
@@ -170,8 +177,8 @@ echo "Build Complete!"
 echo "=========================================="
 echo ""
 echo "FFmpeg binaries:"
-echo "  ${DIST_DIR}/${FFMPEG_VERSION}/full/ffmpeg     (+ ffprobe)"
-echo "  ${DIST_DIR}/${FFMPEG_VERSION}/photo/ffmpeg    (+ ffprobe; image-only: most formats in, AVIF/JXL out)"
+echo "  ${OUTPUT_DIR}/${FFMPEG_VERSION}/full/ffmpeg     (+ ffprobe)"
+echo "  ${OUTPUT_DIR}/${FFMPEG_VERSION}/photo/ffmpeg    (+ ffprobe; image-only: most formats in, AVIF/JXL out)"
 echo ""
 echo "Supported features:"
 echo "  - x264 (H.264)"

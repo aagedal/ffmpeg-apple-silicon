@@ -34,7 +34,7 @@ source "${SCRIPT_DIR}/../config.sh" >/dev/null
 
 # Default values
 INPUT_FOLDER="${1:-${SCRIPT_DIR}/test_videos}"
-FFMPEG="${2:-${DIST_DIR}/${FFMPEG_VERSION}/full/ffmpeg}"
+FFMPEG="${2:-${OUTPUT_DIR}/${FFMPEG_VERSION}/full/ffmpeg}"
 OUTPUT_BASE="${SCRIPT_DIR}/test_output"
 DURATION=10  # Encode first 10 seconds
 

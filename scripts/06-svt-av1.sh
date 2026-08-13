@@ -15,8 +15,8 @@ echo "Building SVT-AV1 ${SVT_AV1_VERSION}..."
 
 cd "${SOURCE_DIR}"
 
-if [ ! -d "SVT-AV1-${SVT_AV1_VERSION}" ]; then
-    curl -L -O "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v${SVT_AV1_VERSION}/SVT-AV1-v${SVT_AV1_VERSION}.tar.gz"
+if [ ! -d "SVT-AV1-v${SVT_AV1_VERSION}" ]; then
+    download_file "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v${SVT_AV1_VERSION}/SVT-AV1-v${SVT_AV1_VERSION}.tar.gz" "SVT-AV1-v${SVT_AV1_VERSION}.tar.gz"
     tar xf "SVT-AV1-v${SVT_AV1_VERSION}.tar.gz"
 fi
 

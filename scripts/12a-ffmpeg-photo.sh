@@ -20,20 +20,26 @@ echo "Building FFmpeg ${FFMPEG_VERSION} (Photo Edition)..."
 cd "${SOURCE_DIR}"
 
 if [ ! -d "ffmpeg-${FFMPEG_VERSION}" ]; then
-    curl -L -O "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
+    download_file "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz" "ffmpeg-${FFMPEG_VERSION}.tar.xz"
     tar xf "ffmpeg-${FFMPEG_VERSION}.tar.xz"
 fi
 
 cd "ffmpeg-${FFMPEG_VERSION}"
 
+if [ ! -f VERSION ] || [ "$(tr -d '\r\n' < VERSION)" != "${FFMPEG_VERSION}" ]; then
+    echo "ERROR: FFmpeg source tree does not match requested version ${FFMPEG_VERSION}" >&2
+    exit 1
+fi
+
 # Clean any previous FFmpeg build (shared source tree with the full builds)
-make clean 2>/dev/null || true
+make distclean 2>/dev/null || true
 
 # Add bin directory to PATH for nasm
 export PATH="${BIN_DIR}:${PATH}"
 
 ./configure \
     --prefix="${INSTALL_DIR}" \
+    --metalcc="xcrun -sdk macosx metal -fmodules-cache-path=${CLANG_MODULE_CACHE_PATH}" \
     --arch=arm64 \
     --target-os=darwin \
     --pkg-config-flags="--static" \
@@ -156,9 +162,14 @@ export PATH="${BIN_DIR}:${PATH}"
 
 make ${MAKEFLAGS}
 
+if ! ./ffmpeg -version | head -1 | grep -Fq "ffmpeg version ${FFMPEG_VERSION}"; then
+    echo "ERROR: built FFmpeg binary is not version ${FFMPEG_VERSION}" >&2
+    exit 1
+fi
+
 # Copy to dist without `make install`
 # (installing would overwrite the full binaries in ${BIN_DIR})
-OUT_DIR="${DIST_DIR}/${FFMPEG_VERSION}/photo"
+OUT_DIR="${OUTPUT_DIR}/${FFMPEG_VERSION}/photo"
 echo "Creating photo edition standalone binaries in ${OUT_DIR}..."
 mkdir -p "${OUT_DIR}"
 cp "ffmpeg" "${OUT_DIR}/ffmpeg"

@@ -16,7 +16,7 @@ echo "Building NASM ${NASM_VERSION}..."
 cd "${SOURCE_DIR}"
 
 if [ ! -d "nasm-${NASM_VERSION}" ]; then
-    curl -L -O "https://www.nasm.us/pub/nasm/releasebuilds/${NASM_VERSION}/nasm-${NASM_VERSION}.tar.xz"
+    download_file "https://www.nasm.us/pub/nasm/releasebuilds/${NASM_VERSION}/nasm-${NASM_VERSION}.tar.xz" "nasm-${NASM_VERSION}.tar.xz"
     tar xf "nasm-${NASM_VERSION}.tar.xz"
 fi
 

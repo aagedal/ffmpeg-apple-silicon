@@ -11,17 +11,18 @@ if is_complete "${COMPONENT}"; then
     exit 0
 fi
 
-echo "Building VVdeC (from git master)..."
+echo "Building VVdeC ${VVDEC_VERSION}..."
 
 cd "${SOURCE_DIR}"
 
-# Use git clone for more reliable builds
-if [ ! -d "vvdec" ]; then
-    git clone --depth 1 https://github.com/fraunhoferhhi/vvdec.git
+if [ ! -d "vvdec-${VVDEC_VERSION}" ]; then
+    download_file "https://github.com/fraunhoferhhi/vvdec/archive/refs/tags/v${VVDEC_VERSION}.tar.gz" \
+        "vvdec-${VVDEC_VERSION}.tar.gz"
+    tar xf "vvdec-${VVDEC_VERSION}.tar.gz"
 fi
 
-mkdir -p "vvdec/build"
-cd "vvdec/build"
+mkdir -p "vvdec-${VVDEC_VERSION}/build"
+cd "vvdec-${VVDEC_VERSION}/build"
 
 cmake \
     -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \

@@ -1,138 +1,101 @@
 #!/bin/bash
 
-# Verify FFmpeg Build Script
-# Run this after building to verify your FFmpeg binaries (full variant)
+# Verify the full FFmpeg build and fail if required features are missing.
+
+set -e
 
 source "$(dirname "$0")/../config.sh"
 
+FULL_DIR="${OUTPUT_DIR}/${FFMPEG_VERSION}/full"
+FFMPEG_BIN="${FULL_DIR}/ffmpeg"
+FFPROBE_BIN="${FULL_DIR}/ffprobe"
+FAILURES=0
+
+pass() {
+    echo "✅ $1"
+}
+
+fail() {
+    echo "❌ $1" >&2
+    FAILURES=$((FAILURES + 1))
+}
+
+has_entry() {
+    local output="$1"
+    local name="$2"
+    echo "${output}" | grep -Eq "[[:space:]]${name}[[:space:]]"
+}
+
 echo "=========================================="
-echo "FFmpeg Build Verification"
+echo "FFmpeg ${FFMPEG_VERSION} Build Verification"
 echo "=========================================="
 echo ""
 
-# Check if binaries exist, then work from the dist folder
-FULL_DIR="${DIST_DIR}/${FFMPEG_VERSION}/full"
-
-if [ ! -f "${FULL_DIR}/ffmpeg" ] || [ ! -f "${FULL_DIR}/ffprobe" ]; then
-    echo "❌ ERROR: binaries not found in ${FULL_DIR}"
-    echo "   Run ./build.sh first"
+if [ ! -x "${FFMPEG_BIN}" ] || [ ! -x "${FFPROBE_BIN}" ]; then
+    echo "❌ Binaries not found in ${FULL_DIR}" >&2
+    echo "   Run ./build.sh first" >&2
     exit 1
 fi
 
-cd "${FULL_DIR}"
+for binary in "${FFMPEG_BIN}" "${FFPROBE_BIN}"; do
+    binary_name="$(basename "${binary}")"
+    version_line="$(${binary} -version | sed -n '1p')"
 
-echo "✅ Binaries found"
-echo ""
+    case "${version_line}" in
+        "${binary_name} version ${FFMPEG_VERSION} "*)
+            pass "${binary_name} reports exact version ${FFMPEG_VERSION}"
+            ;;
+        *)
+            fail "${binary_name} version mismatch: ${version_line}"
+            ;;
+    esac
 
-# Check architecture
-echo "Architecture Check:"
-echo "-------------------"
-ARCH=$(file ./ffmpeg | grep -o "arm64\|x86_64")
-if [ "$ARCH" = "arm64" ]; then
-    echo "✅ Architecture: ARM64 (Apple Silicon)"
+    if file "${binary}" | grep -q "Mach-O 64-bit executable arm64"; then
+        pass "${binary_name} is a native ARM64 executable"
+    else
+        fail "${binary_name} is not a native ARM64 executable"
+    fi
+
+    if otool -L "${binary}" | grep -Eq '/opt/homebrew|/usr/local|/compiled/'; then
+        fail "${binary_name} links to a non-system build dependency"
+        otool -L "${binary}" | grep -E '/opt/homebrew|/usr/local|/compiled/' >&2
+    else
+        pass "${binary_name} has no Homebrew or build-tree library references"
+    fi
+done
+
+ENCODERS="$(${FFMPEG_BIN} -hide_banner -encoders 2>/dev/null)"
+FILTERS="$(${FFMPEG_BIN} -hide_banner -filters 2>/dev/null)"
+HWACCELS="$(${FFMPEG_BIN} -hide_banner -hwaccels 2>/dev/null)"
+
+for encoder in \
+    libx264 libx265 libvpx libvpx-vp9 libaom-av1 libsvtav1 libvvenc \
+    libjxl libwebp libopenjpeg libmp3lame libopus libvorbis; do
+    if has_entry "${ENCODERS}" "${encoder}"; then
+        pass "Encoder available: ${encoder}"
+    else
+        fail "Missing required encoder: ${encoder}"
+    fi
+done
+
+for filter in ass subtitles whisper libvmaf; do
+    if has_entry "${FILTERS}" "${filter}"; then
+        pass "Filter available: ${filter}"
+    else
+        fail "Missing required filter: ${filter}"
+    fi
+done
+
+if echo "${HWACCELS}" | grep -qx 'videotoolbox'; then
+    pass "VideoToolbox hardware acceleration is available"
 else
-    echo "❌ Architecture: $ARCH (Expected: arm64)"
+    fail "VideoToolbox hardware acceleration is missing"
+fi
+
+echo ""
+if [ "${FAILURES}" -ne 0 ]; then
+    echo "Verification failed with ${FAILURES} error(s)." >&2
     exit 1
 fi
-echo ""
 
-# Detailed file info
-echo "Binary Details:"
-echo "---------------"
-file ./ffmpeg
-echo ""
-
-# Architecture info
-echo "Architecture Info:"
-echo "------------------"
-lipo -info ./ffmpeg
-echo ""
-
-# File size
-echo "Binary Sizes:"
-echo "-------------"
-ls -lh ffmpeg ffprobe | awk '{print $9 ": " $5}'
-echo ""
-
-# Check dependencies (should be minimal - only system frameworks)
-echo "Dependencies Check:"
-echo "-------------------"
-echo "FFmpeg dependencies:"
-otool -L ./ffmpeg | head -20
-echo ""
-
-# Test version
-echo "Version Check:"
-echo "--------------"
-./ffmpeg -version | head -3
-echo ""
-
-# Check for JPEG XL support
-echo "JPEG XL Support:"
-echo "----------------"
-if ./ffmpeg -codecs 2>/dev/null | grep -q "jxl"; then
-    echo "✅ JPEG XL support detected"
-    ./ffmpeg -codecs 2>/dev/null | grep jxl
-else
-    echo "❌ JPEG XL support NOT found"
-fi
-echo ""
-
-# Check for VideoToolbox support
-echo "VideoToolbox Support:"
-echo "---------------------"
-if ./ffmpeg -encoders 2>/dev/null | grep -q "videotoolbox"; then
-    echo "✅ VideoToolbox support detected"
-    ./ffmpeg -encoders 2>/dev/null | grep videotoolbox
-else
-    echo "❌ VideoToolbox support NOT found"
-fi
-echo ""
-
-# Check for AudioToolbox support
-echo "AudioToolbox Support:"
-echo "---------------------"
-if ./ffmpeg -encoders 2>/dev/null | grep -q "audiotoolbox\|at_aac"; then
-    echo "✅ AudioToolbox support detected"
-else
-    echo "⚠️  AudioToolbox support not detected (may be built-in)"
-fi
-echo ""
-
-# List all enabled encoders
-echo "Video Encoders (sample):"
-echo "------------------------"
-./ffmpeg -encoders 2>/dev/null | grep -E "libx264|libx265|libaom|libsvtav1|libvvenc|libjxl|libvpx" | head -10
-echo ""
-
-# List all enabled decoders
-echo "Video Decoders (sample):"
-echo "------------------------"
-./ffmpeg -decoders 2>/dev/null | grep -E "h264|hevc|av1|vvc|jxl|vp9" | head -10
-echo ""
-
-# Check audio codecs
-echo "Audio Codecs (sample):"
-echo "----------------------"
-./ffmpeg -codecs 2>/dev/null | grep -E "opus|vorbis|mp3|aac" | head -8
-echo ""
-
-echo "=========================================="
-echo "Verification Summary"
-echo "=========================================="
-echo ""
-echo "✅ Build appears successful!"
-echo ""
-echo "Key Features Verified:"
-echo "  • ARM64 (Apple Silicon) native binary"
-echo "  • JPEG XL support"
-echo "  • VideoToolbox hardware acceleration"
-echo "  • Modern video codecs (x264, x265, VP9, AV1, VVC)"
-echo "  • Modern audio codecs (Opus, Vorbis, MP3, AAC)"
-echo ""
-echo "Test encoding with JPEG XL:"
-echo "  ./ffmpeg -i input.png output.jxl"
-echo ""
-echo "Test hardware acceleration:"
-echo "  ./ffmpeg -i input.mp4 -c:v h264_videotoolbox -b:v 5M output.mp4"
-echo ""
+echo "All FFmpeg ${FFMPEG_VERSION} verification checks passed."

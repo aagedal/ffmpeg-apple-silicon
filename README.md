@@ -1,4 +1,4 @@
-# Custom FFmpeg Build with JPEG XL Support (Apple Silicon)
+# FFmpeg 9.0.1 Build with JPEG XL Support (Apple Silicon)
 
 This repository contains a modular build system for creating a custom static FFmpeg binary on **Apple Silicon Macs** (M1/M2/M3) with comprehensive codec support, including JPEG XL (libjxl) and macOS hardware acceleration (VideoToolbox/AudioToolbox).
 
@@ -6,14 +6,16 @@ This repository contains a modular build system for creating a custom static FFm
 
 ## Features
 
+The dependency pins below were audited against their upstream stable releases on **2026-08-13**.
+
 ### Video Codecs
 - **x264** (stable) - H.264/AVC encoding
-- **x265** (master) - HEVC/H.265 encoding (with high bit depth)
+- **x265** 4.2 - HEVC/H.265 encoding (with high bit depth)
 - **libvpx** 1.16.0 - VP8/VP9 encoding/decoding
 - **libaom** 3.14.1 - AV1 encoding/decoding
-- **SVT-AV1** 4.1.0 - Fast AV1 encoding
-- **VVenC** 1.14.0 / **VVdeC** 3.1.0 - VVC (H.266) encoding/decoding
-- **libjxl** 0.11.2 - JPEG XL encoding/decoding ✨
+- **SVT-AV1** 4.2.0 - Fast AV1 encoding
+- **VVenC** 1.14.0 / **VVdeC** 3.2.0 - VVC (H.266) encoding/decoding
+- **libjxl** 0.12.0 - JPEG XL encoding/decoding ✨
 - **libwebp** 1.6.0 - WebP image/animation encoding
 - **libtheora** 1.2.0 - Theora video codec
 - **FLAC** 1.5.0 - Lossless audio codec
@@ -21,13 +23,14 @@ This repository contains a modular build system for creating a custom static FFm
 ### Audio Codecs
 - **Opus** 1.6.1 - Modern audio codec
 - **Vorbis** 1.3.7 / **libogg** 1.3.6 - Ogg Vorbis
-- **LAME** 3.100 - MP3 encoding
+- **LAME** 4.0 - MP3 encoding
 - **AAC** - FFmpeg native encoder + AudioToolbox (`aac_at`) hardware-assisted encoding
 
 ### Additional Features
 - **Whisper** 1.9.2 - Speech recognition/transcription filter
-- **libass** 0.17.4 - Advanced subtitle rendering
-- **Freetype** 2.14.3 / **Fribidi** 1.0.16 - Font rendering and bidirectional text
+- **libass** 0.17.5 - Advanced subtitle rendering
+- **Freetype** 2.14.3 / **Fribidi** 1.0.16 / **HarfBuzz** 14.3.1 - Text shaping and rendering
+- **VMAF** 3.2.0 - Perceptual video quality analysis
 - **VideoToolbox** - macOS hardware-accelerated encoding (H.264, HEVC, ProRes)
 - **AudioToolbox** - macOS audio processing
 - **NEON optimizations** - ARM64 SIMD instructions for better performance
@@ -136,7 +139,7 @@ ffmpeg_aagedal/
 ├── compiled/             # Compiled libraries (created during build)
 ├── .build-progress       # Build progress tracker
 └── dist/                 # Final binaries (created after build)
-    └── <version>/        # e.g. 9.0/
+    └── <version>/        # e.g. 9.0.1/
         ├── full/         # ffmpeg + ffprobe (full build)
         └── photo/        # ffmpeg + ffprobe (image-only build)
 ```
@@ -152,8 +155,8 @@ Use the included verification script:
 Or manually verify JPEG XL support (binaries live under `dist/<version>/<variant>/`):
 
 ```bash
-./dist/9.0/full/ffmpeg -version
-./dist/9.0/full/ffmpeg -codecs | grep jxl
+./dist/9.0.1/full/ffmpeg -version
+./dist/9.0.1/full/ffmpeg -codecs | grep jxl
 ```
 
 Test macOS hardware acceleration:
@@ -182,7 +185,7 @@ Example encoding with JPEG XL:
 A much smaller image-only binary built by `scripts/12a-ffmpeg-photo.sh`. It decodes most common image formats (PNG, JPEG, JPEG 2000, JPEG XL, WebP, TIFF, BMP, GIF, AVIF, HEIC, PSD, EXR, DPX, TGA, PNM, QOI, and more) and encodes **AVIF** (via SVT-AV1 or libaom) and **JPEG XL** (via libjxl), plus WebP/PNG/JPEG/TIFF/EXR for convenience. No audio codecs, no general video codecs, no network.
 
 ```bash
-FFP=./dist/9.0/photo/ffmpeg
+FFP=./dist/9.0.1/photo/ffmpeg
 
 # JPEG XL export (distance 0 = mathematically lossless, 1 ≈ visually lossless)
 $FFP -i input.png -c:v libjxl -distance 1 output.jxl
@@ -211,8 +214,8 @@ Example using VideoToolbox (hardware acceleration):
 Edit `config.sh` and modify the version variables:
 
 ```bash
-export LIBJXL_VERSION="0.11.2"
-export FFMPEG_VERSION="9.0"
+export LIBJXL_VERSION="0.12.0"
+export FFMPEG_VERSION="9.0.1"
 # ... etc
 ```
 

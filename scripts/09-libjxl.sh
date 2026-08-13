@@ -18,7 +18,7 @@ cd "${SOURCE_DIR}"
 # Build brotli (required for libjxl)
 if [ ! -d "brotli-${BROTLI_VERSION}" ]; then
     echo "  Building brotli..."
-    curl -L -O "https://github.com/google/brotli/archive/v${BROTLI_VERSION}.tar.gz"
+    download_file "https://github.com/google/brotli/archive/v${BROTLI_VERSION}.tar.gz" "v${BROTLI_VERSION}.tar.gz"
     tar xf "v${BROTLI_VERSION}.tar.gz"
     
     mkdir -p "brotli-${BROTLI_VERSION}/build"
@@ -38,7 +38,7 @@ fi
 # Build highway (required for libjxl)
 if [ ! -d "highway-${HIGHWAY_VERSION}" ]; then
     echo "  Building highway..."
-    curl -L -O "https://github.com/google/highway/archive/${HIGHWAY_VERSION}.tar.gz"
+    download_file "https://github.com/google/highway/archive/${HIGHWAY_VERSION}.tar.gz" "${HIGHWAY_VERSION}.tar.gz"
     tar xf "${HIGHWAY_VERSION}.tar.gz"
     
     mkdir -p "highway-${HIGHWAY_VERSION}/cmake-build"
@@ -59,7 +59,7 @@ fi
 
 # Build libjxl
 if [ ! -d "libjxl-${LIBJXL_VERSION}" ]; then
-    curl -L -O "https://github.com/libjxl/libjxl/archive/v${LIBJXL_VERSION}.tar.gz"
+    download_file "https://github.com/libjxl/libjxl/archive/v${LIBJXL_VERSION}.tar.gz" "v${LIBJXL_VERSION}.tar.gz"
     tar xf "v${LIBJXL_VERSION}.tar.gz"
 fi
 cd "libjxl-${LIBJXL_VERSION}"
@@ -83,6 +83,8 @@ cmake \
     -DJPEGXL_ENABLE_EXAMPLES=OFF \
     -DJPEGXL_ENABLE_MANPAGES=OFF \
     -DJPEGXL_ENABLE_SKCMS=ON \
+    -DJPEGXL_FORCE_SYSTEM_BROTLI=ON \
+    -DJPEGXL_FORCE_SYSTEM_HWY=ON \
     -DJPEGXL_FORCE_SYSTEM_LCMS2=OFF \
     -DCMAKE_DISABLE_FIND_PACKAGE_LCMS2=ON \
     -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \

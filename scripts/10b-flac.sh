@@ -17,8 +17,8 @@ cd "${SOURCE_DIR}"
 
 # Download and extract FLAC
 if [ ! -d "flac-${FLAC_VERSION}" ]; then
-    curl -L -o "flac-${FLAC_VERSION}.tar.xz" \
-        "https://github.com/xiph/flac/releases/download/${FLAC_VERSION}/flac-${FLAC_VERSION}.tar.xz"
+    download_file "https://github.com/xiph/flac/releases/download/${FLAC_VERSION}/flac-${FLAC_VERSION}.tar.xz" \
+        "flac-${FLAC_VERSION}.tar.xz"
     tar xf "flac-${FLAC_VERSION}.tar.xz"
 fi
 

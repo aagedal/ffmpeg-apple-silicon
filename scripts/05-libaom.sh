@@ -16,7 +16,7 @@ echo "Building libaom ${LIBAOM_VERSION}..."
 cd "${SOURCE_DIR}"
 
 if [ ! -d "libaom-${LIBAOM_VERSION}" ]; then
-    curl -L -O "https://storage.googleapis.com/aom-releases/libaom-${LIBAOM_VERSION}.tar.gz"
+    download_file "https://storage.googleapis.com/aom-releases/libaom-${LIBAOM_VERSION}.tar.gz" "libaom-${LIBAOM_VERSION}.tar.gz"
     tar xf "libaom-${LIBAOM_VERSION}.tar.gz"
 fi
 

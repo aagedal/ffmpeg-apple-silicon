@@ -16,7 +16,7 @@ echo "Building OpenJPEG ${OPENJPEG_VERSION}..."
 cd "${SOURCE_DIR}"
 
 if [ ! -d "openjpeg-${OPENJPEG_VERSION}" ]; then
-    curl -L -O "https://github.com/uclouvain/openjpeg/archive/refs/tags/v${OPENJPEG_VERSION}.tar.gz"
+    download_file "https://github.com/uclouvain/openjpeg/archive/refs/tags/v${OPENJPEG_VERSION}.tar.gz" "v${OPENJPEG_VERSION}.tar.gz"
     tar xf "v${OPENJPEG_VERSION}.tar.gz"
 fi
 

@@ -17,8 +17,8 @@ cd "${SOURCE_DIR}"
 
 # Download and extract libbluray
 if [ ! -d "libbluray-${LIBBLURAY_VERSION}" ]; then
-    curl -L -o "libbluray-${LIBBLURAY_VERSION}.tar.xz" \
-        "https://download.videolan.org/pub/videolan/libbluray/${LIBBLURAY_VERSION}/libbluray-${LIBBLURAY_VERSION}.tar.xz"
+    download_file "https://download.videolan.org/pub/videolan/libbluray/${LIBBLURAY_VERSION}/libbluray-${LIBBLURAY_VERSION}.tar.xz" \
+        "libbluray-${LIBBLURAY_VERSION}.tar.xz"
     tar xf "libbluray-${LIBBLURAY_VERSION}.tar.xz"
 fi
 
