@@ -6,7 +6,12 @@ set -e
 
 source "$(dirname "$0")/../config.sh"
 
-FULL_DIR="${OUTPUT_DIR}/${FFMPEG_VERSION}/full"
+VARIANT="${1:-full}"
+case "${VARIANT}" in
+    full|photo-agent) ;;
+    *) echo "ERROR: Expected full or photo-agent" >&2; exit 2 ;;
+esac
+FULL_DIR="${OUTPUT_DIR}/${FFMPEG_VERSION}/${VARIANT}"
 FFMPEG_BIN="${FULL_DIR}/ffmpeg"
 FFPROBE_BIN="${FULL_DIR}/ffprobe"
 FAILURES=0
@@ -78,7 +83,7 @@ for encoder in \
     fi
 done
 
-for filter in ass subtitles whisper libvmaf; do
+for filter in ass subtitles whisper libvmaf yadif_videotoolbox; do
     if has_entry "${FILTERS}" "${filter}"; then
         pass "Filter available: ${filter}"
     else

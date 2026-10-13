@@ -31,7 +31,7 @@ The dependency pins below were audited against their upstream stable releases on
 - **libass** 0.17.5 - Advanced subtitle rendering
 - **Freetype** 2.15.0 / **Fribidi** 1.0.17 / **HarfBuzz** 14.6.0 - Text shaping and rendering
 - **VMAF** 3.2.1 - Perceptual video quality analysis
-- **VideoToolbox** - macOS hardware-accelerated encoding (H.264, HEVC, ProRes)
+- **VideoToolbox** - macOS hardware-accelerated encoding (H.264, HEVC, ProRes) and Metal deinterlacing (`yadif_videotoolbox`)
 - **AudioToolbox** - macOS audio processing
 - **NEON optimizations** - ARM64 SIMD instructions for better performance
 - Full static linking for portable binaries
@@ -68,7 +68,7 @@ The script will:
 1. Check for required tools
 2. Show build progress (what's already built)
 3. Build all components in order
-4. Create the binaries under `dist/<ffmpeg-version>/`: `full/ffmpeg` + `full/ffprobe` (full build) and `photo/ffmpeg` + `photo/ffprobe` (image-only build). Every variant keeps the plain `ffmpeg`/`ffprobe` names, and multiple FFmpeg versions can coexist side by side.
+4. Create three variants under `dist/<ffmpeg-version>/`: `full/` (Media Converter, stock Whisper), `photo-agent/` (full codecs with the canonical Whisper patch), and `photo/` (image-only). Each contains `ffmpeg` and `ffprobe`. Every variant keeps the plain `ffmpeg`/`ffprobe` names, and multiple FFmpeg versions can coexist side by side.
 
 **Note:** The build process takes several hours. You can safely interrupt (Ctrl+C) and resume later - the script tracks progress and skips already-built components.
 
@@ -141,6 +141,7 @@ ffmpeg_aagedal/
 └── dist/                 # Final binaries (created after build)
     └── <version>/        # e.g. 9.0.2/
         ├── full/         # ffmpeg + ffprobe (full build)
+        ├── photo-agent/  # ffmpeg + ffprobe (full codecs, canonical Whisper)
         └── photo/        # ffmpeg + ffprobe (image-only build)
 ```
 
@@ -179,6 +180,51 @@ Example encoding with JPEG XL:
 ./ffmpeg -i input.png output.jxl
 ./ffmpeg -i input.mp4 -c:v libjxl output.jxl
 ```
+
+### Separate app builds
+
+Media Converter uses `dist/9.0.2/full/`, which retains stock Whisper output.
+Photo Agent uses `dist/9.0.2/photo-agent/`, with the same codecs and filters plus
+its pinned `af_whisper.c` correction. JSON retains original whitespace and
+`[BLANK_AUDIO]`, escapes JSON syntax/control bytes, bounds timestamps to supplied
+audio, and propagates inference/output failures. Text/SRT retain their cleaning.
+The existing `photo/` edition remains image-only and cannot transcribe audio.
+
+```bash
+bash scripts/12-ffmpeg.sh                 # stock full build
+bash scripts/12b-ffmpeg-photo-agent.sh     # patched full build
+bash tools/verify.sh full
+bash tools/verify.sh photo-agent
+bash tools/test_yadif_videotoolbox.sh full
+bash tools/test_yadif_videotoolbox.sh photo-agent
+```
+
+The patched build has its own source tree and patch-sensitive completion marker;
+it never installs over `compiled/bin/ffmpeg` or the stock distribution. Both full
+builds require Metal and `yadif_videotoolbox` explicitly. The recipe checks `xcrun`
+and falls back to an already mounted Xcode MetalToolchain. If needed, set
+`FFMPEG_METALCC` and `FFMPEG_METALLIB` to working compiler/linker paths. An absent
+compiler fails the build instead of silently dropping the filter. Both builds
+also carry the proposed [upstream Metal autorelease fix](https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/23850)
+for the reproduced deinterlacer teardown crash.
+
+The Photo Agent build runs the supplied ASan/UBSan harness before compilation.
+Run real CPU/Metal speech, silence, JSON/text/SRT, VAD, short-queue, model-refusal,
+cancellation and output-failure checks with explicit local inputs:
+
+```bash
+python3 tools/test_whisper_runtime.py \
+  --binary dist/9.0.2/photo-agent/ffmpeg \
+  --model /absolute/path/ggml-tiny.en.bin \
+  --vad-model /absolute/path/ggml-silero-v6.2.0.bin \
+  --audio /absolute/path/speech-16khz-mono.wav \
+  --output build/whisper-runtime
+```
+
+The runner retains commands, logs, outputs, and binary/model/audio hashes. It
+requires an active Metal backend; run in a session with GPU access. The real-model
+checks validate output contracts and process failures; the sanitizer harness injects
+inference/allocation/metadata/close failures. See [patch attribution and test scope](scripts/ffmpeg/README.md).
 
 ### Photo Edition (`ffmpeg-photo`)
 
@@ -282,9 +328,11 @@ After building and verifying, sign every edition with your Developer ID Applicat
 ```bash
 ./tools/verify.sh
 SIGN_IDENTITY='<Developer ID Application identity or SHA-1>' ./tools/sign.sh
+# Or sign only the two full app builds:
+SIGN_IDENTITY='<Developer ID Application identity or SHA-1>' ./tools/sign.sh 9.0.2 full photo-agent
 ```
 
-The signing script checks the version, ARM64 architecture, and library dependencies, then applies hardened runtime and a secure timestamp and verifies each signature. Run it again after rebuilding, which replaces the signed binaries.
+The signing script checks the version, ARM64 architecture, and library dependencies, then applies hardened runtime and a secure timestamp and verifies each signature. Run it again after rebuilding, which replaces the signed binaries. Resuming an already completed full build preserves its existing distribution signatures.
 
 ## Binary Distribution
 

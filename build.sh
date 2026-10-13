@@ -99,6 +99,7 @@ BUILD_SCRIPTS=(
     "11b-vmaf.sh"
     "12-ffmpeg.sh"
     "12a-ffmpeg-photo.sh"
+    "12b-ffmpeg-photo-agent.sh"
 )
 
 echo "Build Progress:"
@@ -115,6 +116,10 @@ for script in "${BUILD_SCRIPTS[@]}"; do
         exit 1
     fi
     component_name="$(sed -n 's/^COMPONENT="\([^"]*\)"/\1/p' "${script_path}" | head -1)"
+    case "${script}" in
+        12-ffmpeg.sh) component_name="$(ffmpeg_component_name full)" ;;
+        12b-ffmpeg-photo-agent.sh) component_name="$(ffmpeg_component_name photo-agent)" ;;
+    esac
     if [ -z "${component_name}" ]; then
         echo "ERROR: ${script_path} does not declare COMPONENT" >&2
         exit 1
@@ -137,6 +142,7 @@ if [ $COMPLETED -eq $TOTAL ]; then
     echo ""
     echo "FFmpeg binaries are located at:"
     echo "  ${OUTPUT_DIR}/${FFMPEG_VERSION}/full/ffmpeg     (+ ffprobe)"
+    echo "  ${OUTPUT_DIR}/${FFMPEG_VERSION}/photo-agent/ffmpeg (+ ffprobe; full codecs, patched Whisper)"
     echo "  ${OUTPUT_DIR}/${FFMPEG_VERSION}/photo/ffmpeg    (+ ffprobe; image-only: most formats in, AVIF/JXL out)"
     echo ""
     exit 0
@@ -179,6 +185,7 @@ echo ""
 echo "FFmpeg binaries:"
 echo "  ${OUTPUT_DIR}/${FFMPEG_VERSION}/full/ffmpeg     (+ ffprobe)"
 echo "  ${OUTPUT_DIR}/${FFMPEG_VERSION}/photo/ffmpeg    (+ ffprobe; image-only: most formats in, AVIF/JXL out)"
+echo "  ${OUTPUT_DIR}/${FFMPEG_VERSION}/photo-agent/ffmpeg (+ ffprobe; full codecs, patched Whisper)"
 echo ""
 echo "Supported features:"
 echo "  - x264 (H.264)"

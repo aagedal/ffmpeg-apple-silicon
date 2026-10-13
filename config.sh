@@ -15,7 +15,7 @@ export LIB_DIR="${INSTALL_DIR}/lib"
 export INCLUDE_DIR="${INSTALL_DIR}/include"
 export CLANG_MODULE_CACHE_PATH="${BUILD_DIR}/clang-module-cache"
 
-# Final binaries land in dist/<ffmpeg-version>/<variant>/ (full, photo, minimal)
+# Final binaries land in dist/<ffmpeg-version>/<variant>/ (full, photo-agent, photo, minimal)
 # so every variant keeps the plain names ffmpeg/ffprobe and versions can coexist
 # Avoid exporting the generic name DIST_DIR: libvpx uses it internally and
 # would otherwise install into our distribution folder instead of compiled/.
@@ -108,6 +108,61 @@ download_file() {
     mv "${partial}" "${output}"
 }
 
+# Xcode can mount MetalToolchain while xcrun still resolves an unusable shim.
+# Explicit overrides also support separately installed toolchains.
+resolve_ffmpeg_metal() {
+    local toolchain
+    if [ -z "${FFMPEG_METALCC:-}" ]; then
+        if xcrun -sdk macosx metal -v >/dev/null 2>&1; then
+            FFMPEG_METALCC="xcrun -sdk macosx metal"
+            FFMPEG_METALLIB="${FFMPEG_METALLIB:-xcrun -sdk macosx metallib}"
+        else
+            for toolchain in /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-*/Metal.xctoolchain/usr/bin; do
+                if [ -x "${toolchain}/metal" ] && "${toolchain}/metal" -v >/dev/null 2>&1; then
+                    FFMPEG_METALCC="${toolchain}/metal"
+                    FFMPEG_METALLIB="${FFMPEG_METALLIB:-${toolchain}/metallib}"
+                    break
+                fi
+            done
+        fi
+    fi
+    FFMPEG_METALLIB="${FFMPEG_METALLIB:-xcrun -sdk macosx metallib}"
+    if [ -z "${FFMPEG_METALCC:-}" ] || ! ${FFMPEG_METALCC} -v >/dev/null 2>&1 ||
+       ! ${FFMPEG_METALLIB} --version >/dev/null 2>&1; then
+        echo "ERROR: A working Metal compiler/linker is required for yadif_videotoolbox." >&2
+        echo "Install Xcode's MetalToolchain or set FFMPEG_METALCC and FFMPEG_METALLIB." >&2
+        return 1
+    fi
+    export FFMPEG_METALCC FFMPEG_METALLIB
+    echo "Metal compiler: ${FFMPEG_METALCC}"
+    echo "Metal linker: ${FFMPEG_METALLIB}"
+}
+
+# Include source patches in completion identities for both app variants.
+ffmpeg_component_name() {
+    local variant="$1"
+    local common_id whisper_id
+    common_id="$(shasum -a 256 "${WORKSPACE}/scripts/ffmpeg/yadif-videotoolbox-autorelease.patch" | cut -d ' ' -f1)"
+    if [ "${variant}" = "photo-agent" ]; then
+        whisper_id="$(shasum -a 256 "${WORKSPACE}/scripts/ffmpeg/af_whisper-canonical-json.patch" | cut -d ' ' -f1)"
+        echo "ffmpeg-photo-agent-metal-${common_id}-${whisper_id}"
+    else
+        echo "ffmpeg-full-metal-${common_id}"
+    fi
+}
+
+# Replacing an executable in place can leave macOS with a stale code-signature
+# cache. Publish a new inode with an atomic rename instead.
+copy_dist_binary() {
+    local source="$1"
+    local target="$2"
+    local temporary
+    temporary="$(mktemp "${target}.XXXXXX")"
+    cp "${source}" "${temporary}"
+    chmod +x "${temporary}"
+    mv -f "${temporary}" "${target}"
+}
+
 # Helper function to mark component as complete
 mark_complete() {
     local component="$1"
@@ -169,6 +224,17 @@ write_dist_readme() {
         echo "- Minimum macOS: ${MACOSX_DEPLOYMENT_TARGET} (Apple Silicon only)"
         echo "- License: GPL version 3 or later (no nonfree components)"
         echo ""
+        if [ "${variant}" = "full" ] || [ "${variant}" = "photo-agent" ]; then
+            echo "- Common source correction: yadif_videotoolbox Metal autorelease teardown fix (upstream PR 23850)"
+            echo "- YADIF patch SHA-256: $(shasum -a 256 "${WORKSPACE}/scripts/ffmpeg/yadif-videotoolbox-autorelease.patch" | cut -d ' ' -f1)"
+            echo ""
+        fi
+        if [ "${variant}" = "photo-agent" ]; then
+            echo "- Whisper output: canonical JSON, sample-bounded timestamps, propagated failures"
+            echo "- Whisper patch SHA-256: $(shasum -a 256 "${WORKSPACE}/scripts/ffmpeg/af_whisper-canonical-json.patch" | cut -d ' ' -f1)"
+            echo "- Patched af_whisper.c SHA-256: eba0b4645581f5fd14f841f25b83550522d67d064aaa9fd752c828fa9ba38b71"
+            echo ""
+        fi
         echo "## External libraries"
         echo ""
 

@@ -11,7 +11,7 @@ if [ -z "${SIGN_IDENTITY:-}" ]; then
     security find-identity -v -p codesigning >&2
     echo "" >&2
     echo "Usage:" >&2
-    echo "  SIGN_IDENTITY='<Developer ID identity>' $0 [ffmpeg-version]" >&2
+    echo "  SIGN_IDENTITY='<Developer ID identity>' $0 [ffmpeg-version] [variant ...]" >&2
     exit 2
 fi
 
@@ -20,6 +20,22 @@ source "$(dirname "$0")/../config.sh"
 IDENTITY="${SIGN_IDENTITY}"
 ID_PREFIX="${SIGN_ID_PREFIX:-ffmpeg}"
 VERSION="${1:-${FFMPEG_VERSION}}"
+if [ "$#" -gt 0 ]; then
+    shift
+fi
+VARIANTS=("$@")
+if [ "${#VARIANTS[@]}" -eq 0 ]; then
+    for directory in "${OUTPUT_DIR}/${VERSION}"/*; do
+        [ -d "${directory}" ] || continue
+        VARIANTS+=("$(basename "${directory}")")
+    done
+fi
+for variant in "${VARIANTS[@]}"; do
+    case "${variant}" in
+        full|photo-agent|photo|minimal) ;;
+        *) echo "ERROR: Unknown variant: ${variant}" >&2; exit 2 ;;
+    esac
+done
 
 cd "$(dirname "$0")/.."
 
@@ -59,17 +75,27 @@ fi
 # Sign every binary under dist/<requested-version>/<variant>/.
 # Identifier becomes <prefix>.<variant>.<name>, e.g. ffmpeg.photo.ffmpeg.
 found=0
-for b in "dist/${VERSION}"/*/ffmpeg "dist/${VERSION}"/*/ffprobe; do
-    [ -f "$b" ] || continue
-    found=1
-    variant="$(basename "$(dirname "$b")")"
-    name="$(basename "$b")"
+SIGN_TEMP=""
+trap '[ -z "${SIGN_TEMP}" ] || rm -f "${SIGN_TEMP}"' EXIT
+for variant in "${VARIANTS[@]}"; do
+    for name in ffmpeg ffprobe; do
+        b="${OUTPUT_DIR}/${VERSION}/${variant}/${name}"
+        [ -f "${b}" ] || continue
+        found=1
 
-    validate_binary "$b"
-    codesign --force --sign "${IDENTITY}" --options runtime --timestamp \
-        --identifier "${ID_PREFIX}.${variant}.${name}" "$b"
-    codesign --verify --strict --verbose=2 "$b"
-    echo "[✓] signed and verified: $b"
+        validate_binary "${b}"
+        # Sign a fresh inode and publish atomically so macOS cannot retain
+        # an execution/notarization assessment from the previous signature.
+        SIGN_TEMP="$(mktemp "${b}.signing.XXXXXX")"
+        cp "${b}" "${SIGN_TEMP}"
+        codesign --force --sign "${IDENTITY}" --options runtime --timestamp \
+            --identifier "${ID_PREFIX}.${variant}.${name}" "${SIGN_TEMP}"
+        codesign --verify --strict --verbose=2 "${SIGN_TEMP}"
+        mv -f "${SIGN_TEMP}" "${b}"
+        SIGN_TEMP=""
+        codesign --verify --strict --verbose=2 "${b}"
+        echo "[✓] signed and verified: ${b}"
+    done
 done
 
 if [ "$found" -eq 0 ]; then
