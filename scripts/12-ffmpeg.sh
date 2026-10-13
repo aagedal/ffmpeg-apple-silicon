@@ -2,35 +2,90 @@
 
 # Build FFmpeg with all codecs and macOS VideoToolbox/AudioToolbox support
 
+set -e
+
+if [ "$(uname -m)" != "arm64" ]; then
+    echo "ERROR: Apple Silicon (ARM64) is required" >&2
+    exit 1
+fi
+
 source "$(dirname "$0")/../config.sh"
 
-COMPONENT="ffmpeg"
+VARIANT="${FFMPEG_VARIANT:-full}"
+case "${VARIANT}" in
+    full|photo-agent) ;;
+    *) echo "ERROR: Unknown full build variant: ${VARIANT}" >&2; exit 1 ;;
+esac
+RECIPE_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-OUT_DIR="${OUTPUT_DIR}/${FFMPEG_VERSION}/full"
+COMPONENT="$(ffmpeg_component_name "${VARIANT}")"
+
+OUT_DIR="${OUTPUT_DIR}/${FFMPEG_VERSION}/${VARIANT}"
 
 if is_complete "${COMPONENT}"; then
     echo "[SKIP] ${COMPONENT} already built"
-    # Always ensure binaries are copied to dist
-    if [ -f "${BIN_DIR}/ffmpeg" ]; then
+    # Preserve signed dist binaries on resume; restore missing stock outputs only.
+    if [ "${VARIANT}" = "full" ] && [ -f "${BIN_DIR}/ffmpeg" ] &&
+       { [ ! -x "${OUT_DIR}/ffmpeg" ] || [ ! -x "${OUT_DIR}/ffprobe" ]; }; then
         mkdir -p "${OUT_DIR}"
-        cp "${BIN_DIR}/ffmpeg" "${OUT_DIR}/ffmpeg"
-        cp "${BIN_DIR}/ffprobe" "${OUT_DIR}/ffprobe"
-        chmod +x "${OUT_DIR}/ffmpeg" "${OUT_DIR}/ffprobe"
-        write_dist_readme "${OUT_DIR}" "full"
+        copy_dist_binary "${BIN_DIR}/ffmpeg" "${OUT_DIR}/ffmpeg"
+        copy_dist_binary "${BIN_DIR}/ffprobe" "${OUT_DIR}/ffprobe"
     fi
-    exit 0
+    if [ -x "${OUT_DIR}/ffmpeg" ] && [ -x "${OUT_DIR}/ffprobe" ]; then
+        write_dist_readme "${OUT_DIR}" "${VARIANT}"
+        exit 0
+    fi
+    echo "Completed binaries are missing; rebuilding ${VARIANT}..."
+else
+    echo "Building FFmpeg ${FFMPEG_VERSION} (${VARIANT})..."
 fi
 
-echo "Building FFmpeg ${FFMPEG_VERSION}..."
+resolve_ffmpeg_metal
 
-cd "${SOURCE_DIR}"
+# Extract separate source trees so a patch/configure can never affect full/photo.
+TREE="${SOURCE_DIR}/ffmpeg-${FFMPEG_VERSION}"
+if [ "${VARIANT}" = "photo-agent" ]; then
+    TREE="${SOURCE_DIR}/ffmpeg-${FFMPEG_VERSION}-photo-agent"
+fi
+if [ ! -d "${TREE}" ]; then
+    ARCHIVE="${SOURCE_DIR}/ffmpeg-${FFMPEG_VERSION}.tar.xz"
+    if [ ! -f "${ARCHIVE}" ]; then
+        download_file "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz" "${ARCHIVE}"
+    fi
+    mkdir -p "${TREE}"
+    tar xf "${ARCHIVE}" --strip-components=1 -C "${TREE}"
+fi
+cd "${TREE}"
 
-if [ ! -d "ffmpeg-${FFMPEG_VERSION}" ]; then
-    download_file "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz" "ffmpeg-${FFMPEG_VERSION}.tar.xz"
-    tar xf "ffmpeg-${FFMPEG_VERSION}.tar.xz"
+# Both app builds need the upstream proposed Metal ownership correction.
+YADIF_HASH="$(shasum -a 256 libavfilter/vf_yadif_videotoolbox.m | cut -d ' ' -f1)"
+case "${YADIF_HASH}" in
+    dad7ff78662f5e6eda23e36a8f9fb4c155e6606d2dd8178df81063a657fb8d3c)
+        patch --batch --fuzz=0 -p1 -i "${RECIPE_DIR}/ffmpeg/yadif-videotoolbox-autorelease.patch"
+        ;;
+    950f9acd1346a45171710c163d5f78c0673b0dcd59d57ee767b66919a07c7e37) ;;
+    *) echo "ERROR: Unrecognized yadif_videotoolbox source" >&2; exit 1 ;;
+esac
+if [ "$(shasum -a 256 libavfilter/vf_yadif_videotoolbox.m | cut -d ' ' -f1)" != \
+     "950f9acd1346a45171710c163d5f78c0673b0dcd59d57ee767b66919a07c7e37" ]; then
+    echo "ERROR: YADIF correction produced unexpected source bytes" >&2
+    exit 1
 fi
 
-cd "ffmpeg-${FFMPEG_VERSION}"
+if [ "${VARIANT}" = "photo-agent" ]; then
+    # Run the actual extracted-function sanitizer harness before compiling.
+    python3 "${RECIPE_DIR}/ci/test_ffmpeg_whisper_patch.py"
+    PATCHED_HASH="eba0b4645581f5fd14f841f25b83550522d67d064aaa9fd752c828fa9ba38b71"
+    FILTER_HASH="$(shasum -a 256 libavfilter/af_whisper.c | cut -d " " -f1)"
+    if [ "${FILTER_HASH}" != "${PATCHED_HASH}" ]; then
+        python3 "${RECIPE_DIR}/ffmpeg/prepare_whisper_source.py" libavfilter/af_whisper.c \
+            --output libavfilter/af_whisper.c.patched
+        mv libavfilter/af_whisper.c.patched libavfilter/af_whisper.c
+    fi
+else
+    # Fail if somebody has patched the stock source instead of the isolated tree.
+    python3 "${RECIPE_DIR}/ffmpeg/prepare_whisper_source.py" libavfilter/af_whisper.c
+fi
 
 if [ ! -f VERSION ] || [ "$(tr -d '\r\n' < VERSION)" != "${FFMPEG_VERSION}" ]; then
     echo "ERROR: FFmpeg source tree does not match requested version ${FFMPEG_VERSION}" >&2
@@ -46,7 +101,9 @@ export PATH="${BIN_DIR}:${PATH}"
 
 ./configure \
     --prefix="${INSTALL_DIR}" \
-    --metalcc="xcrun -sdk macosx metal -fmodules-cache-path=${CLANG_MODULE_CACHE_PATH}" \
+    --metalcc="${FFMPEG_METALCC} -fmodules-cache-path=${CLANG_MODULE_CACHE_PATH}" \
+    --metallib="${FFMPEG_METALLIB}" \
+    --enable-metal \
     --arch=arm64 \
     --target-os=darwin \
     --pkg-config-flags="--static" \
@@ -128,15 +185,18 @@ export PATH="${BIN_DIR}:${PATH}"
     --enable-filter=scale \
     --enable-filter=overlay \
     --enable-filter=whisper \
+    --enable-filter=yadif_videotoolbox \
     --enable-filter=ssim \
     --enable-filter=psnr \
     --enable-filter=xpsnr \
     --enable-filter=msad
 
 make ${MAKEFLAGS}
-make install
+if [ "${VARIANT}" = "full" ]; then
+    make install
+fi
 
-if ! "${BIN_DIR}/ffmpeg" -version | head -1 | grep -Fq "ffmpeg version ${FFMPEG_VERSION}"; then
+if ! ./ffmpeg -version | head -1 | grep -Fq "ffmpeg version ${FFMPEG_VERSION}"; then
     echo "ERROR: built FFmpeg binary is not version ${FFMPEG_VERSION}" >&2
     exit 1
 fi
@@ -144,10 +204,10 @@ fi
 # Copy standalone binaries to dist
 echo "Creating standalone binaries in ${OUT_DIR}..."
 mkdir -p "${OUT_DIR}"
-cp "${BIN_DIR}/ffmpeg" "${OUT_DIR}/ffmpeg"
-cp "${BIN_DIR}/ffprobe" "${OUT_DIR}/ffprobe"
+copy_dist_binary ./ffmpeg "${OUT_DIR}/ffmpeg"
+copy_dist_binary ./ffprobe "${OUT_DIR}/ffprobe"
 chmod +x "${OUT_DIR}/ffmpeg" "${OUT_DIR}/ffprobe"
-write_dist_readme "${OUT_DIR}" "full"
+write_dist_readme "${OUT_DIR}" "${VARIANT}"
 
 echo ""
 echo "FFmpeg binaries created:"
