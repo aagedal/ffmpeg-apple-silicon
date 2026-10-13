@@ -52,19 +52,26 @@ fi
 
 # Build fribidi (required for libass)
 echo "  Building fribidi ${FRIBIDI_VERSION}..."
-if [ ! -d "fribidi-${FRIBIDI_VERSION}" ]; then
-    download_file "https://github.com/fribidi/fribidi/releases/download/v${FRIBIDI_VERSION}/fribidi-${FRIBIDI_VERSION}.tar.xz" "fribidi-${FRIBIDI_VERSION}.tar.xz"
-    tar xf "fribidi-${FRIBIDI_VERSION}.tar.xz"
-    
-    cd "fribidi-${FRIBIDI_VERSION}"
-    ./configure \
-        --prefix="${INSTALL_DIR}" \
-        --disable-shared \
-        --enable-static
-    
-    make ${MAKEFLAGS}
-    make install
-    cd "${SOURCE_DIR}"
+# Meson can omit the CLI and documentation, avoiding a help2man dependency.
+# Check the installed library, not just the extracted directory, so an
+# interrupted build is retried instead of being silently skipped.
+if ! pkg-config --exists "fribidi = ${FRIBIDI_VERSION}"; then
+    if [ ! -d "fribidi-${FRIBIDI_VERSION}" ]; then
+        download_file "https://github.com/fribidi/fribidi/releases/download/v${FRIBIDI_VERSION}/fribidi-${FRIBIDI_VERSION}.tar.xz" "fribidi-${FRIBIDI_VERSION}.tar.xz"
+        tar xf "fribidi-${FRIBIDI_VERSION}.tar.xz"
+    fi
+
+    if [ ! -f "fribidi-${FRIBIDI_VERSION}/build/build.ninja" ]; then
+        meson setup "fribidi-${FRIBIDI_VERSION}/build" "fribidi-${FRIBIDI_VERSION}" \
+            --prefix="${INSTALL_DIR}" \
+            --buildtype=release \
+            --default-library=static \
+            -Ddocs=false \
+            -Dbin=false \
+            -Dtests=false
+    fi
+    ninja -C "fribidi-${FRIBIDI_VERSION}/build" -j "${CPU_COUNT}"
+    ninja -C "fribidi-${FRIBIDI_VERSION}/build" install
 fi
 
 # Build HarfBuzz locally so libass cannot silently pick up Homebrew libraries.
