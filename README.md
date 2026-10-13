@@ -1,4 +1,4 @@
-# FFmpeg 9.0.1 Build with JPEG XL Support (Apple Silicon)
+# FFmpeg 9.0.2 Build with JPEG XL Support (Apple Silicon)
 
 This repository contains a modular build system for creating a custom static FFmpeg binary on **Apple Silicon Macs** (M1/M2/M3) with comprehensive codec support, including JPEG XL (libjxl) and macOS hardware acceleration (VideoToolbox/AudioToolbox).
 
@@ -6,15 +6,15 @@ This repository contains a modular build system for creating a custom static FFm
 
 ## Features
 
-The dependency pins below were audited against their upstream stable releases on **2026-08-13**.
+The dependency pins below were audited against their upstream stable releases on **2026-10-13**. FFmpeg is pinned to [9.0.2](https://ffmpeg.org/download.html). Supporting libraries also use libpng 1.6.59, Brotli 1.2.0, and Highway 1.4.0; x264 is fetched from its current stable branch for a fresh build.
 
 ### Video Codecs
 - **x264** (stable) - H.264/AVC encoding
 - **x265** 4.2 - HEVC/H.265 encoding (with high bit depth)
-- **libvpx** 1.16.0 - VP8/VP9 encoding/decoding
-- **libaom** 3.14.1 - AV1 encoding/decoding
+- **libvpx** 1.17.0 - VP8/VP9 encoding/decoding
+- **libaom** 3.15.2 - AV1 encoding/decoding
 - **SVT-AV1** 4.2.0 - Fast AV1 encoding
-- **VVenC** 1.14.0 / **VVdeC** 3.2.0 - VVC (H.266) encoding/decoding
+- **VVenC** 1.14.0 / **VVdeC** 3.2.1 - VVC (H.266) encoding/decoding
 - **libjxl** 0.12.0 - JPEG XL encoding/decoding ✨
 - **libwebp** 1.6.0 - WebP image/animation encoding
 - **libtheora** 1.2.0 - Theora video codec
@@ -27,10 +27,10 @@ The dependency pins below were audited against their upstream stable releases on
 - **AAC** - FFmpeg native encoder + AudioToolbox (`aac_at`) hardware-assisted encoding
 
 ### Additional Features
-- **Whisper** 1.9.2 - Speech recognition/transcription filter
+- **Whisper** 1.9.5 - Speech recognition/transcription filter
 - **libass** 0.17.5 - Advanced subtitle rendering
-- **Freetype** 2.14.3 / **Fribidi** 1.0.16 / **HarfBuzz** 14.3.1 - Text shaping and rendering
-- **VMAF** 3.2.0 - Perceptual video quality analysis
+- **Freetype** 2.15.0 / **Fribidi** 1.0.17 / **HarfBuzz** 14.6.0 - Text shaping and rendering
+- **VMAF** 3.2.1 - Perceptual video quality analysis
 - **VideoToolbox** - macOS hardware-accelerated encoding (H.264, HEVC, ProRes)
 - **AudioToolbox** - macOS audio processing
 - **NEON optimizations** - ARM64 SIMD instructions for better performance
@@ -139,7 +139,7 @@ ffmpeg_aagedal/
 ├── compiled/             # Compiled libraries (created during build)
 ├── .build-progress       # Build progress tracker
 └── dist/                 # Final binaries (created after build)
-    └── <version>/        # e.g. 9.0.1/
+    └── <version>/        # e.g. 9.0.2/
         ├── full/         # ffmpeg + ffprobe (full build)
         └── photo/        # ffmpeg + ffprobe (image-only build)
 ```
@@ -155,8 +155,8 @@ Use the included verification script:
 Or manually verify JPEG XL support (binaries live under `dist/<version>/<variant>/`):
 
 ```bash
-./dist/9.0.1/full/ffmpeg -version
-./dist/9.0.1/full/ffmpeg -codecs | grep jxl
+./dist/9.0.2/full/ffmpeg -version
+./dist/9.0.2/full/ffmpeg -codecs | grep jxl
 ```
 
 Test macOS hardware acceleration:
@@ -185,7 +185,7 @@ Example encoding with JPEG XL:
 A much smaller image-only binary built by `scripts/12a-ffmpeg-photo.sh`. It decodes most common image formats (PNG, JPEG, JPEG 2000, JPEG XL, WebP, TIFF, BMP, GIF, AVIF, HEIC, PSD, EXR, DPX, TGA, PNM, QOI, and more) and encodes **AVIF** (via SVT-AV1 or libaom) and **JPEG XL** (via libjxl), plus WebP/PNG/JPEG/TIFF/EXR for convenience. No audio codecs, no general video codecs, no network.
 
 ```bash
-FFP=./dist/9.0.1/photo/ffmpeg
+FFP=./dist/9.0.2/photo/ffmpeg
 
 # JPEG XL export (distance 0 = mathematically lossless, 1 ≈ visually lossless)
 $FFP -i input.png -c:v libjxl -distance 1 output.jxl
@@ -215,7 +215,7 @@ Edit `config.sh` and modify the version variables:
 
 ```bash
 export LIBJXL_VERSION="0.12.0"
-export FFMPEG_VERSION="9.0.1"
+export FFMPEG_VERSION="9.0.2"
 # ... etc
 ```
 
@@ -274,6 +274,17 @@ If you encounter SDK-related errors, ensure your Xcode Command Line Tools are up
 sudo rm -rf /Library/Developer/CommandLineTools
 xcode-select --install
 ```
+
+## Signing the binaries
+
+After building and verifying, sign every edition with your Developer ID Application certificate:
+
+```bash
+./tools/verify.sh
+SIGN_IDENTITY='<Developer ID Application identity or SHA-1>' ./tools/sign.sh
+```
+
+The signing script checks the version, ARM64 architecture, and library dependencies, then applies hardened runtime and a secure timestamp and verifies each signature. Run it again after rebuilding, which replaces the signed binaries.
 
 ## Binary Distribution
 
