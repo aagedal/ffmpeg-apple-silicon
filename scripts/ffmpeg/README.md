@@ -72,3 +72,40 @@ unset the encode path and output bytes are unchanged.
 
 The full and Photo Agent builds apply it with zero fuzz; minimal and photo do not
 enable libopenjpeg. Both completion markers include the patch hash.
+
+## libopenjpeg IMF profiles
+
+`libopenjpegenc-imf.patch` (local, LGPL 2.1 or later) applies on top of
+`libopenjpegenc-max-size.patch` and lets the encoder write ISO/IEC 15444-1 Amd 8
+IMF profile codestreams for ST 2067-21 (IMF App 2e):
+
+- `-profile imf_2k|imf_4k|imf_8k` (lossy, 9/7) and `imf_2k_r|imf_4k_r|imf_8k_r`
+  (reversible, 5/3) set Rsiz to `OPJ_PROFILE_IMF_*` (0x0400–0x0900)
+- `-imf_mainlevel <-1..11>` (default -1): derived from the component sample rate
+  (luma plus subsampled chroma × frame rate) against OpenJPEG's
+  `OPJ_IMF_MAINLEVEL_*_MSAMPLESEC`, then raised if the sub level needs it
+  (ISO/IEC 15444-1 Table A.53)
+- `-imf_sublevel <-1..9>` (default -1): derived from `max_cs_size` × 8 × frame
+  rate against `OPJ_IMF_SUBLEVEL_*_MBITSSEC`, or 0 without `max_cs_size`. An
+  explicit sub level without `max_cs_size` sets `max_cs_size` to the sub level's
+  bitrate ÷ frame rate, like `opj_compress -IMF …,sublevel=Y,framerate=FPS`
+
+OpenJPEG 2.5.4 (`opj_j2k_set_imf_parameters`) then sets 32×32 code blocks,
+CPRL, one tile part per component with TLM, 256×256 precincts (128×128 for NLLL),
+caps the decomposition levels and forces the 9/7 wavelet for lossy profiles, so
+`-irreversible 1` is not needed. `opj_j2k_is_imf_compliant` checks the result. If
+it rejects the parameters (for example a 2K profile at 3840×2160, `imf_2k_r` with
+`-irreversible 1`, an alpha channel or a non-CPRL `-prog_order`), OpenJPEG would
+silently write Rsiz 0. The encoder fails the frame instead. Inconsistent levels,
+bitrates or `cinema_mode` fail at init.
+
+`max_cs_size`/`max_comp_size` now also apply to IMF profiles, with the same
+re-encode-until-it-fits guarantee as for the cinema profiles. They are not clamped
+to the DCI 24 fps limits. `-b:v` stays ignored: the app already passes it, so
+honouring it would change existing output.
+
+- Patched encoder SHA-256 (after both patches): `740027d284ec225b67220fa7bd970f1cf6be953953d558a223e2c7c96fdcbb12`
+
+With no IMF profile and no IMF level option, encoding is byte-identical to the
+max-size-only build, and the cinema profiles are unchanged. Both completion
+markers include this patch's hash.
