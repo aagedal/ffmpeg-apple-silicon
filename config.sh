@@ -143,7 +143,8 @@ ffmpeg_component_name() {
     local variant="$1"
     local common_id whisper_id
     common_id="$(cat "${WORKSPACE}/scripts/ffmpeg/yadif-videotoolbox-autorelease.patch" \
-        "${WORKSPACE}/scripts/ffmpeg/libopenjpegenc-max-size.patch" | shasum -a 256 | cut -d ' ' -f1)"
+        "${WORKSPACE}/scripts/ffmpeg/libopenjpegenc-max-size.patch" \
+        "${WORKSPACE}/scripts/ffmpeg/libopenjpegenc-imf.patch" | shasum -a 256 | cut -d ' ' -f1)"
     if [ "${variant}" = "photo-agent" ]; then
         whisper_id="$(shasum -a 256 "${WORKSPACE}/scripts/ffmpeg/af_whisper-canonical-json.patch" | cut -d ' ' -f1)"
         echo "ffmpeg-photo-agent-metal-${common_id}-${whisper_id}"
@@ -230,6 +231,8 @@ write_dist_readme() {
             echo "- YADIF patch SHA-256: $(shasum -a 256 "${WORKSPACE}/scripts/ffmpeg/yadif-videotoolbox-autorelease.patch" | cut -d ' ' -f1)"
             echo "- Common source addition: libopenjpeg encoder options \`max_cs_size\`/\`max_comp_size\` (default 0 = unchanged) for DCI frame-size caps"
             echo "- OpenJPEG encoder patch SHA-256: $(shasum -a 256 "${WORKSPACE}/scripts/ffmpeg/libopenjpegenc-max-size.patch" | cut -d ' ' -f1)"
+            echo "- Common source addition: libopenjpeg IMF profiles (\`-profile imf_2k|imf_4k|imf_8k|imf_2k_r|imf_4k_r|imf_8k_r\`, \`imf_mainlevel\`/\`imf_sublevel\`, default -1 = derived) with \`max_cs_size\` rate control"
+            echo "- OpenJPEG IMF patch SHA-256: $(shasum -a 256 "${WORKSPACE}/scripts/ffmpeg/libopenjpegenc-imf.patch" | cut -d ' ' -f1)"
             echo ""
         fi
         if [ "${variant}" = "photo-agent" ]; then
