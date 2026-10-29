@@ -19,6 +19,8 @@ source "$(dirname "$0")/../config.sh"
 
 IDENTITY="${SIGN_IDENTITY}"
 ID_PREFIX="${SIGN_ID_PREFIX:-ffmpeg}"
+# SIGN_ID_INCLUDE_VARIANT=0 drops the variant segment, e.g. no.aagedal.ffmpeg.
+ID_INCLUDE_VARIANT="${SIGN_ID_INCLUDE_VARIANT:-1}"
 VERSION="${1:-${FFMPEG_VERSION}}"
 if [ "$#" -gt 0 ]; then
     shift
@@ -73,7 +75,8 @@ if ! security find-identity -v -p codesigning | grep -Fq "${IDENTITY}"; then
 fi
 
 # Sign every binary under dist/<requested-version>/<variant>/.
-# Identifier becomes <prefix>.<variant>.<name>, e.g. ffmpeg.photo.ffmpeg.
+# Identifier becomes <prefix>.<variant>.<name>, e.g. ffmpeg.photo.ffmpeg,
+# or <prefix>.<name> with SIGN_ID_INCLUDE_VARIANT=0.
 found=0
 SIGN_TEMP=""
 trap '[ -z "${SIGN_TEMP}" ] || rm -f "${SIGN_TEMP}"' EXIT
@@ -84,12 +87,18 @@ for variant in "${VARIANTS[@]}"; do
         found=1
 
         validate_binary "${b}"
+        identifier="${ID_PREFIX}.${variant}.${name}"
+        if [ "${ID_INCLUDE_VARIANT}" = "0" ]; then
+            identifier="${ID_PREFIX}.${name}"
+        fi
         # Sign a fresh inode and publish atomically so macOS cannot retain
         # an execution/notarization assessment from the previous signature.
         SIGN_TEMP="$(mktemp "${b}.signing.XXXXXX")"
         cp "${b}" "${SIGN_TEMP}"
+        # mktemp creates mode 0600; keep the published binary executable.
+        chmod 755 "${SIGN_TEMP}"
         codesign --force --sign "${IDENTITY}" --options runtime --timestamp \
-            --identifier "${ID_PREFIX}.${variant}.${name}" "${SIGN_TEMP}"
+            --identifier "${identifier}" "${SIGN_TEMP}"
         codesign --verify --strict --verbose=2 "${SIGN_TEMP}"
         mv -f "${SIGN_TEMP}" "${b}"
         SIGN_TEMP=""
