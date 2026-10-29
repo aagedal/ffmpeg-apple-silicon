@@ -49,3 +49,26 @@ Both completion markers include this patch's hash. The recipe admits only these
 source hashes and checks the corrected result after zero-fuzz application.
 `tools/test_yadif_videotoolbox.sh` tests NV12/P010 hardware frames in frame/field
 modes, checks frame counts, and requires successful process exit after teardown.
+
+## libopenjpeg frame-size caps
+
+`libopenjpegenc-max-size.patch` (local, LGPL 2.1 or later like the encoder) adds
+two encoder options so DCP/IMF exports can honour bitrates other than the fixed
+`-cinema_mode` limits (`-b:v` is ignored by this encoder):
+
+- `-max_cs_size <int>`: maximum codestream bytes per frame (default 0 = unchanged)
+- `-max_comp_size <int>`: maximum bytes per component (default 0; when only
+  `max_cs_size` is set it becomes `max_cs_size / 1.25`, the libdcp ratio)
+
+They are applied after the `cinema_mode` switch and `cinema_parameters()`, and
+only take effect with `-profile cinema2k|cinema4k` or a `-cinema_mode`; OpenJPEG
+clamps them to the 24 fps limits. Because OpenJPEG's rate allocation can
+overshoot its target by a few bytes, a set `max_cs_size` makes the encoder
+re-encode with a tighter target until the codestream fits. With both options
+unset the encode path and output bytes are unchanged.
+
+- Original encoder SHA-256: `6b6bf1241f3606f83929920d08d576e33f88ddb76fa682d98c3cb0ae3d41bef7`
+- Patched encoder SHA-256: `9c5e75a7941888a2cf4972c21a9481a0f5d7c3791dcb210e1512d8e014a19c39`
+
+The full and Photo Agent builds apply it with zero fuzz; minimal and photo do not
+enable libopenjpeg. Both completion markers include the patch hash.

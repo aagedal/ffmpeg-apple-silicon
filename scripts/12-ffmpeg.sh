@@ -72,6 +72,22 @@ if [ "$(shasum -a 256 libavfilter/vf_yadif_videotoolbox.m | cut -d ' ' -f1)" != 
     exit 1
 fi
 
+# Both app builds expose libopenjpeg's per-frame/per-component size caps so DCP
+# exports can honour bitrates other than the fixed cinema_mode limits.
+OPENJPEG_ENC_HASH="$(shasum -a 256 libavcodec/libopenjpegenc.c | cut -d ' ' -f1)"
+case "${OPENJPEG_ENC_HASH}" in
+    6b6bf1241f3606f83929920d08d576e33f88ddb76fa682d98c3cb0ae3d41bef7)
+        patch --batch --fuzz=0 -p1 -i "${RECIPE_DIR}/ffmpeg/libopenjpegenc-max-size.patch"
+        ;;
+    9c5e75a7941888a2cf4972c21a9481a0f5d7c3791dcb210e1512d8e014a19c39) ;;
+    *) echo "ERROR: Unrecognized libopenjpegenc source" >&2; exit 1 ;;
+esac
+if [ "$(shasum -a 256 libavcodec/libopenjpegenc.c | cut -d ' ' -f1)" != \
+     "9c5e75a7941888a2cf4972c21a9481a0f5d7c3791dcb210e1512d8e014a19c39" ]; then
+    echo "ERROR: libopenjpegenc patch produced unexpected source bytes" >&2
+    exit 1
+fi
+
 if [ "${VARIANT}" = "photo-agent" ]; then
     # Run the actual extracted-function sanitizer harness before compiling.
     python3 "${RECIPE_DIR}/ci/test_ffmpeg_whisper_patch.py"
