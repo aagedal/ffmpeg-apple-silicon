@@ -3,9 +3,9 @@
 ## Build Commands
 - Build all: `./build.sh`
 - Build single component: `source config.sh && ./scripts/XX-component.sh`
-- Verify build: `./verify.sh`
-- Test single codec: `./test_encode.sh` (runs all codecs on videos in test_videos/)
-- Quick test: `./quick_test.sh` (generates test pattern and runs all tests)
+- Verify build: `./tools/verify.sh`
+- Test single codec: `./tools/test_encode.sh` (runs all codecs on videos in test_videos/)
+- Quick test: `./tools/quick_test.sh` (generates test pattern and runs all tests)
 
 ## Code Style
 - Shell scripts: Use `#!/bin/bash`, `set -e` for error handling
