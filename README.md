@@ -6,14 +6,14 @@ This repository contains a modular build system for creating a custom static FFm
 
 ## Features
 
-The dependency pins below were audited against their upstream stable releases on **2026-10-13**. FFmpeg is pinned to [9.0.2](https://ffmpeg.org/download.html). Supporting libraries also use libpng 1.6.59, Brotli 1.2.0, and Highway 1.4.0; x264 is fetched from its current stable branch for a fresh build.
+The dependency pins below were audited against their upstream stable releases on **2026-11-03**. FFmpeg is pinned to [9.0.2](https://ffmpeg.org/download.html). Supporting libraries also use libpng 1.6.59, Brotli 1.2.0, and Highway 1.4.0; x264 is fetched from its current stable branch for a fresh build.
 
 ### Video Codecs
 - **x264** (stable) - H.264/AVC encoding
 - **x265** 4.2 - HEVC/H.265 encoding (with high bit depth)
 - **libvpx** 1.17.0 - VP8/VP9 encoding/decoding
-- **libaom** 3.15.2 - AV1 encoding/decoding
-- **SVT-AV1** 4.2.0 - Fast AV1 encoding
+- **libaom** 3.15.3 - AV1 encoding/decoding
+- **SVT-AV1** 4.3.0 - Fast AV1 encoding
 - **VVenC** 1.14.0 / **VVdeC** 3.2.1 - VVC (H.266) encoding/decoding
 - **libjxl** 0.12.0 - JPEG XL encoding/decoding ✨
 - **libwebp** 1.6.0 - WebP image/animation encoding
@@ -29,7 +29,7 @@ The dependency pins below were audited against their upstream stable releases on
 ### Additional Features
 - **Whisper** 1.9.5 - Speech recognition/transcription filter
 - **libass** 0.17.5 - Advanced subtitle rendering
-- **Freetype** 2.15.0 / **Fribidi** 1.0.17 / **HarfBuzz** 14.6.0 - Text shaping and rendering
+- **Freetype** 2.15.0 / **Fribidi** 1.0.18 / **HarfBuzz** 15.0.0 - Text shaping and rendering
 - **VMAF** 3.2.1 - Perceptual video quality analysis
 - **VideoToolbox** - macOS hardware-accelerated encoding (H.264, HEVC, ProRes) and Metal deinterlacing (`yadif_videotoolbox`)
 - **AudioToolbox** - macOS audio processing
