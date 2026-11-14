@@ -15,7 +15,7 @@ The dependency pins below were audited against their upstream stable releases on
 - **libaom** 3.15.3 - AV1 encoding/decoding
 - **SVT-AV1** 4.3.0 - Fast AV1 encoding
 - **VVenC** 1.14.0 / **VVdeC** 3.2.1 - VVC (H.266) encoding/decoding
-- **libjxl** 0.12.0 - JPEG XL encoding/decoding ✨
+- **libjxl** 0.13.0 - JPEG XL encoding/decoding ✨
 - **libwebp** 1.6.0 - WebP image/animation encoding
 - **libtheora** 1.2.0 - Theora video codec
 - **FLAC** 1.5.0 - Lossless audio codec
@@ -29,7 +29,7 @@ The dependency pins below were audited against their upstream stable releases on
 ### Additional Features
 - **Whisper** 1.9.5 - Speech recognition/transcription filter
 - **libass** 0.17.5 - Advanced subtitle rendering
-- **Freetype** 2.15.0 / **Fribidi** 1.0.18 / **HarfBuzz** 15.0.0 - Text shaping and rendering
+- **Freetype** 2.15.0 / **Fribidi** 1.0.18 / **HarfBuzz** 15.1.0 - Text shaping and rendering
 - **VMAF** 3.2.1 - Perceptual video quality analysis
 - **VideoToolbox** - macOS hardware-accelerated encoding (H.264, HEVC, ProRes) and Metal deinterlacing (`yadif_videotoolbox`)
 - **AudioToolbox** - macOS audio processing
@@ -271,7 +271,7 @@ Example using VideoToolbox (hardware acceleration):
 Edit `config.sh` and modify the version variables:
 
 ```bash
-export LIBJXL_VERSION="0.12.0"
+export LIBJXL_VERSION="0.13.0"
 export FFMPEG_VERSION="9.0.2"
 # ... etc
 ```
