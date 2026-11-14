@@ -11,6 +11,7 @@
 #include <string.h>
 #include <strings.h>
 #include <ctype.h>
+#include <math.h>
 #define AVERROR(x) (-(x))
 #define AVERROR_EOF (-999)
 #define AV_LOG_ERROR 0
@@ -27,6 +28,7 @@ static int64_t av_rescale_rnd(int64_t a, int64_t b, int64_t c, int rounding) {
 #define WHISPER_SAMPLING_GREEDY 0
 #define FFMAX(a,b) ((a) > (b) ? (a) : (b))
 #define FFMIN(a,b) ((a) < (b) ? (a) : (b))
+static double av_clipd(double a, double amin, double amax) { return a < amin ? amin : a > amax ? amax : a; }
 #define av_strcasecmp strcasecmp
 #define av_isspace isspace
 #define av_strnlen strnlen
@@ -44,7 +46,7 @@ typedef struct WhisperContext {
     int audio_buffer_fill_size, audio_buffer_vad_size, max_len, index, eof;
     int64_t audio_buffer_start_samples, next_pts;
     float *audio_buffer;
-    const char *language, *format;
+    const char *language, *format, *initial_prompt;
     bool translate;
     AVIOContext *avio_context;
 } WhisperContext;
@@ -58,13 +60,25 @@ struct whisper_full_params {
     bool translate;
     int n_threads, print_special, print_progress, print_realtime, print_timestamps;
     int max_len, token_timestamps, split_on_word;
+    const char *initial_prompt;
+    bool carry_initial_prompt;
 };
+typedef int whisper_token;
+struct whisper_context;
+#define TOKEN_EOT 50257
 static int allocation_count, fail_allocation, infer_error, write_error, close_error;
 static int metadata_error, metadata_call, fail_metadata_call = 1;
 static int last_frame_error, status_sent, input_status, input_ack;
 static int segment_count = 1;
 static int64_t segment_t0 = 2, segment_t1 = 7;
 static const char *segment_text = "";
+/* A timestamp token and EOT surround two text tokens: mean p = 0.7. */
+static int token_count = 4;
+static whisper_token token_ids[8] = {50364, 100, 200, TOKEN_EOT};
+static float token_ps[8] = {0.01f, 0.9f, 0.5f, 0.02f};
+static const char *language_code = "no";
+static struct whisper_full_params last_params;
+static int language_lookups;
 static char output[65536];
 static size_t output_length;
 static int live_allocations;
@@ -106,8 +120,18 @@ static struct whisper_full_params whisper_full_default_params(int mode) {
 }
 static int ff_filter_get_nb_threads(AVFilterContext *ctx) { (void)ctx; return 1; }
 static int whisper_full(void *ctx, struct whisper_full_params p, float *a, int n) {
-    (void)ctx; (void)p; (void)a; (void)n; return infer_error;
+    (void)ctx; (void)a; (void)n; last_params=p; return infer_error;
 }
+static whisper_token whisper_token_eot(void *ctx) { (void)ctx; return TOKEN_EOT; }
+static int whisper_full_n_tokens(void *ctx, int i) { (void)ctx; (void)i; return token_count; }
+static whisper_token whisper_full_get_token_id(void *ctx, int i, int t) {
+    (void)ctx; (void)i; assert(t>=0 && t<token_count); return token_ids[t];
+}
+static float whisper_full_get_token_p(void *ctx, int i, int t) {
+    (void)ctx; (void)i; assert(t>=0 && t<token_count); return token_ps[t];
+}
+static int whisper_full_lang_id(void *ctx) { (void)ctx; return 3; }
+static const char *whisper_lang_str(int id) { assert(id==3); language_lookups++; return language_code; }
 static int whisper_full_n_segments(void *ctx) { (void)ctx; return segment_count; }
 static const char *whisper_full_get_segment_text(void *ctx, int i) { (void)ctx; (void)i; return segment_text; }
 static bool whisper_full_get_segment_speaker_turn_next(void *ctx,int i) { (void)ctx; (void)i; return false; }
@@ -142,6 +166,46 @@ int main(int argc, char **argv) {
         w.audio_buffer_fill_size=1600;
         assert(run_transcription(&ctx,&frame,1600)==0);
         assert(w.audio_buffer_fill_size==0);
+        fputs(output,stdout);
+    } else if (!strcmp(argv[1],"details")) {
+        /* details <token case> <language case>: one JSON line on stdout. */
+        assert(argc==4); segment_text=" word";
+        if (!strcmp(argv[2],"special-only")) {
+            token_count=2; token_ids[0]=50364; token_ids[1]=TOKEN_EOT;
+        } else if (!strcmp(argv[2],"empty")) token_count=0;
+        else if (!strcmp(argv[2],"nan")) token_ps[2]=NAN;
+        else if (!strcmp(argv[2],"inf")) token_ps[1]=INFINITY;
+        else if (!strcmp(argv[2],"clamp")) { token_ps[1]=1.5f; token_ps[2]=-0.5f; }
+        else if (!strcmp(argv[2],"one")) { token_count=1; token_ids[0]=42; token_ps[0]=0.123456f; }
+        else assert(!strcmp(argv[2],"mixed"));
+        if (!strcmp(argv[3],"null")) language_code=NULL;
+        else if (!strcmp(argv[3],"empty")) language_code="";
+        else if (!strcmp(argv[3],"upper")) language_code="EN";
+        else if (!strcmp(argv[3],"quote")) language_code="n\"o";
+        else if (!strcmp(argv[3],"long")) language_code="abcdefghijklmn";
+        else language_code=argv[3];
+        assert(run_transcription(&ctx,&frame,4)==0);
+        fputs(output,stdout);
+    } else if (!strcmp(argv[1],"prompt")) {
+        /* prompt <text|-unset>: the prompt reaches every whisper_full() call. */
+        assert(argc==3);
+        if (strcmp(argv[2],"-unset")) w.initial_prompt=argv[2];
+        w.audio_buffer_fill_size=8;
+        for (int i=0;i<2;i++) {
+            memset(&last_params,0xff,sizeof(last_params));
+            assert(run_transcription(&ctx,&frame,4)==0);
+            if (w.initial_prompt && *w.initial_prompt) {
+                assert(last_params.initial_prompt==w.initial_prompt);
+                assert(last_params.carry_initial_prompt);
+            } else {
+                assert(!last_params.initial_prompt && !last_params.carry_initial_prompt);
+            }
+        }
+    } else if (!strcmp(argv[1],"format")) {
+        /* format <text|srt>: non-JSON output must not gain the JSON keys. */
+        assert(argc==3); w.format=argv[2]; segment_text=" word";
+        assert(run_transcription(&ctx,&frame,4)==0);
+        assert(language_lookups==0);
         fputs(output,stdout);
     } else if (!strcmp(argv[1],"timing")) {
         assert(argc==6);

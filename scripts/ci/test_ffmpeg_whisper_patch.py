@@ -56,8 +56,26 @@ def main():
             output = check([str(binary), "escape", text])
             assert output.count("\n") == 1, repr(output)
             result = json.loads(output)
-            assert list(result) == ["start", "end", "text"]
-            assert result == {"start": 120, "end": 170, "text": text}, repr(result)
+            assert list(result) == ["start", "end", "text", "p", "language"]
+            assert result == {"start": 120, "end": 170, "text": text, "p": 0.7, "language": "no"}, repr(result)
+        # Mean p over text tokens only (ids below EOT), as a JSON number or null.
+        detail_cases = [("mixed", 0.7), ("one", 0.1235), ("clamp", 0.5), ("special-only", None),
+                        ("empty", None), ("nan", None), ("inf", None)]
+        language_cases = [("no", "no"), ("en", "en"), ("haw", "haw"), ("null", None), ("empty", None),
+                          ("upper", None), ("quote", None), ("long", None)]
+        for (tokens, p), (language, code) in [(d, ("no", "no")) for d in detail_cases] + \
+                                             [(("mixed", 0.7), lang) for lang in language_cases]:
+            output = check([str(binary), "details", tokens, language])
+            assert output.count("\n") == 1, repr(output)
+            result = json.loads(output)
+            assert list(result) == ["start", "end", "text", "p", "language"], result
+            assert result == {"start": 100, "end": 100, "text": " word", "p": p, "language": code}, \
+                (tokens, language, result)
+        detail_count = len(detail_cases) + len(language_cases)
+        for prompt in ["Tårnfrid Ølstad, Kvæfjord", '"quoted": \\ path', "-unset", ""]:
+            check([str(binary), "prompt", prompt])
+        assert check([str(binary), "format", "text"]) == "word\n"
+        assert check([str(binary), "format", "srt"]) == "0\n00:00:00,100 --> 00:00:00,100\nword\n\n"
         for fault in ["inference", "missing-context", "null-segment", "write", "metadata", "metadata-duration",
                       "overlap", "eof-last-frame", "eof-close", "eof-flush", "upstream-error",
                       "eof-success", "no-speech", "time-overflow"]:
@@ -78,7 +96,7 @@ def main():
         ]
         for origin, samples, t0, t1, start, end in timing_cases:
             result = json.loads(check([str(binary), "timing", str(origin), str(samples), str(t0), str(t1)]))
-            assert result == {"start": start, "end": end, "text": " [BLANK_AUDIO]"}, result
+            assert result == {"start": start, "end": end, "text": " [BLANK_AUDIO]", "p": 0.7, "language": "no"}, result
         partial = [json.loads(line) for line in check([str(binary), "partial-timing"]).splitlines()]
         assert [(row["start"], row["end"]) for row in partial] == [(0, 1), (1, 2), (2, 3)], partial
         # Two segments exercise append ownership as well as first-segment allocation.
@@ -92,13 +110,26 @@ def main():
             pass
         else:
             raise AssertionError("unrecognized source accepted")
+        # An earlier Photo Agent tree (canonical patch only) receives the rest of the chain.
+        canonical_only = root / "canonical.c"
+        with tempfile.TemporaryDirectory(prefix="whisper-chain-") as chain:
+            target = Path(chain) / "libavfilter/af_whisper.c"
+            target.parent.mkdir()
+            target.write_bytes(args.source.read_bytes())
+            check(["patch", "--batch", "--fuzz=0", "-p1", "-i", str(prepare.PATCHES[0][0]), "-d", chain])
+            canonical_only.write_bytes(target.read_bytes())
+        assert prepare.patched_source(canonical_only) == patched.encode("utf-8")
+        final = root / "final.c"
+        final.write_bytes(patched.encode("utf-8"))
+        assert prepare.patched_source(final) == patched.encode("utf-8")
         existing = root / "existing.c"
         existing.write_text("preserve")
         refused = subprocess.run(["python3", str(PREPARE), str(args.source), "--output", str(existing)],
                                  capture_output=True, text=True)
         assert refused.returncode != 0 and existing.read_text() == "preserve"
-    print(f"PASS: {len(cases)} exact JSON text roundtrips, 14 runtime/fault cases, 11 sample-bound timing cases, "
-          "12 allocation points, pinned source and overwrite refusal (ASan/UBSan).")
+    print(f"PASS: {len(cases)} exact JSON text roundtrips, {detail_count} p/language cases, 4 prompt cases, "
+          "2 text/SRT format cases, 14 runtime/fault cases, 11 sample-bound timing cases, "
+          "12 allocation points, pinned source chain and overwrite refusal (ASan/UBSan).")
 
 
 if __name__ == "__main__":

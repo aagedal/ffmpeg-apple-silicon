@@ -68,7 +68,7 @@ The script will:
 1. Check for required tools
 2. Show build progress (what's already built)
 3. Build all components in order
-4. Create three variants under `dist/<ffmpeg-version>/`: `full/` (Media Converter, stock Whisper), `photo-agent/` (full codecs with the canonical Whisper patch), and `photo/` (image-only). Each contains `ffmpeg` and `ffprobe`. Every variant keeps the plain `ffmpeg`/`ffprobe` names, and multiple FFmpeg versions can coexist side by side.
+4. Create three variants under `dist/<ffmpeg-version>/`: `full/` (Media Converter), `photo-agent/` (Photo Agent; same codecs and patches), and `photo/` (image-only). Each contains `ffmpeg` and `ffprobe`. Every variant keeps the plain `ffmpeg`/`ffprobe` names, and multiple FFmpeg versions can coexist side by side.
 
 **Note:** The build process takes several hours. You can safely interrupt (Ctrl+C) and resume later - the script tracks progress and skips already-built components.
 
@@ -140,8 +140,8 @@ ffmpeg_aagedal/
 ├── .build-progress       # Build progress tracker
 └── dist/                 # Final binaries (created after build)
     └── <version>/        # e.g. 9.0.2/
-        ├── full/         # ffmpeg + ffprobe (full build)
-        ├── photo-agent/  # ffmpeg + ffprobe (full codecs, canonical Whisper)
+        ├── full/         # ffmpeg + ffprobe (full build, Media Converter)
+        ├── photo-agent/  # ffmpeg + ffprobe (same build for Photo Agent)
         └── photo/        # ffmpeg + ffprobe (image-only build)
 ```
 
@@ -183,24 +183,31 @@ Example encoding with JPEG XL:
 
 ### Separate app builds
 
-Media Converter uses `dist/9.0.2/full/`, which retains stock Whisper output.
-Photo Agent uses `dist/9.0.2/photo-agent/`, with the same codecs and filters plus
-its pinned `af_whisper.c` correction. JSON retains original whitespace and
-`[BLANK_AUDIO]`, escapes JSON syntax/control bytes, bounds timestamps to supplied
-audio, and propagates inference/output failures. Text/SRT retain their cleaning.
+Media Converter uses `dist/9.0.2/full/` and Photo Agent uses `dist/9.0.2/photo-agent/`.
+Both carry the same pinned `af_whisper.c` patches, each in its own source tree.
+JSON retains original whitespace and `[BLANK_AUDIO]`, escapes JSON syntax/control
+bytes, bounds timestamps to supplied audio, and propagates inference/output failures.
+Text/SRT retain their cleaning. The filter also takes `initial_prompt=<text>`
+(default empty), which conditions every queue chunk, and each JSON line ends with
+`"p"` (mean text-token probability, or `null`) and `"language"`:
+
+```json
+{"start":8780,"end":9610,"text":" Qvigstad","p":0.8057,"language":"no"}
+```
+
 The existing `photo/` edition remains image-only and cannot transcribe audio.
 
 ```bash
-bash scripts/12-ffmpeg.sh                 # stock full build
-bash scripts/12b-ffmpeg-photo-agent.sh     # patched full build
+bash scripts/12-ffmpeg.sh                 # full build (Media Converter)
+bash scripts/12b-ffmpeg-photo-agent.sh     # same build for Photo Agent
 bash tools/verify.sh full
 bash tools/verify.sh photo-agent
 bash tools/test_yadif_videotoolbox.sh full
 bash tools/test_yadif_videotoolbox.sh photo-agent
 ```
 
-The patched build has its own source tree and patch-sensitive completion marker;
-it never installs over `compiled/bin/ffmpeg` or the stock distribution. Both full
+Each full build has its own source tree and patch-sensitive completion marker;
+the Photo Agent build never installs over `compiled/bin/ffmpeg`. Both full
 builds require Metal and `yadif_videotoolbox` explicitly. The recipe checks `xcrun`
 and falls back to an already mounted Xcode MetalToolchain. If needed, set
 `FFMPEG_METALCC` and `FFMPEG_METALLIB` to working compiler/linker paths. An absent
@@ -208,7 +215,7 @@ compiler fails the build instead of silently dropping the filter. Both builds
 also carry the proposed [upstream Metal autorelease fix](https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/23850)
 for the reproduced deinterlacer teardown crash.
 
-The Photo Agent build runs the supplied ASan/UBSan harness before compilation.
+Both full builds run the supplied ASan/UBSan harness before compilation.
 Run real CPU/Metal speech, silence, JSON/text/SRT, VAD, short-queue, model-refusal,
 cancellation and output-failure checks with explicit local inputs:
 
@@ -220,6 +227,10 @@ python3 tools/test_whisper_runtime.py \
   --audio /absolute/path/speech-16khz-mono.wav \
   --output build/whisper-runtime
 ```
+
+Add `--language no --prompt 'Mette Qvigstad' --prompt-word Qvig --prompt-model
+/absolute/path/ggml-large-v3.bin` (with matching audio) to check that `initial_prompt`
+changes a spelling the model otherwise gets wrong, in at least two queue chunks.
 
 The runner retains commands, logs, outputs, and binary/model/audio hashes. It
 requires an active Metal backend; run in a session with GPU access. The real-model

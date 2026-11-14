@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Qualify the Photo Agent candidate using explicit real speech and VAD models.
+"""Qualify a patched Whisper build using explicit real speech and VAD models.
 
 Retains commands, logs, output and SHA-256 identities in --output. No downloads.
 """
@@ -18,6 +18,16 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+JSON_KEYS = ['start', 'end', 'text', 'p', 'language']
+
+
+def filter_value(value):
+    """Escape for the option list, then for the filtergraph (as the apps do)."""
+    def escape(text, specials):
+        return ''.join('\\' + c if c in specials or c in "\\'" else c for c in text)
+    return escape(escape(value, ':'), '[],;')
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--binary', type=Path, required=True)
@@ -25,7 +35,13 @@ def main():
     p.add_argument('--vad-model', type=Path, required=True)
     p.add_argument('--audio', type=Path, required=True, help='16 kHz mono WAV with intelligible speech')
     p.add_argument('--output', type=Path, required=True)
+    p.add_argument('--language', default='en', help='Whisper language for every run (default: en)')
+    p.add_argument('--prompt', help='initial_prompt for the prompt check (optional)')
+    p.add_argument('--prompt-word', help='word the prompt must make appear in the JSON words')
+    p.add_argument('--prompt-model', type=Path, help='model for the prompt check (default: --model)')
     args = p.parse_args()
+    if bool(args.prompt) != bool(args.prompt_word):
+        p.error('--prompt and --prompt-word go together')
     binary, model, vad, audio, out = [x.resolve() for x in
         (args.binary, args.model, args.vad_model, args.audio, args.output)]
     out.mkdir(parents=True, exist_ok=True)
@@ -40,14 +56,18 @@ def main():
         w.setframerate(16000)
         w.writeframes(bytes(5 * 16000 * 2))
 
-    def command(source, destination, gpu=0, fmt='json', extra='', loop=False, queue=30):
-        options = f'whisper=model={model}:language=en:queue={queue}:use_gpu={gpu}:format={fmt}:destination={destination}'
+    prompt_model = (args.prompt_model or args.model).resolve()
+
+    def command(source, destination, gpu=0, fmt='json', extra='', loop=False, queue=30, whisper_model=None):
+        options = (f'whisper=model={filter_value(str(whisper_model or model))}:language={args.language}:queue={queue}:use_gpu={gpu}'
+                   f':format={fmt}:destination={destination}')
         return [str(binary), '-nostdin', '-hide_banner', '-loglevel', 'debug',
                 *(['-stream_loop', '-1'] if loop else []), '-i', str(source),
                 '-af', options + extra, '-f', 'null', '-']
 
     def run(label, cmd, success=True):
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+        # Token-split UTF-8 in debug logs must not abort the run.
+        r = subprocess.run(cmd, capture_output=True, text=True, errors='replace', timeout=180)
         (out / f'{label}.log').write_text(r.stderr)
         results.append({'case': label, 'command': cmd, 'returncode': r.returncode})
         (out / 'report.json').write_text(json.dumps({'results': results}, indent=2))
@@ -62,12 +82,21 @@ def main():
         text = target.read_text()
         if fmt == 'json':
             rows = [json.loads(line) for line in text.splitlines()]
-            assert all(set(row) == {'start', 'end', 'text'} for row in rows)
+            assert all(list(row) == JSON_KEYS for row in rows), rows
+            assert all(row['p'] is None or (isinstance(row['p'], (int, float)) and 0 <= row['p'] <= 1)
+                       for row in rows), rows
+            expected = None if args.language == 'auto' else args.language
+            assert all(isinstance(row['language'], str) and re.fullmatch(r'[a-z]+', row['language']) and
+                       row['language'] == (expected or row['language']) for row in rows), rows
             assert all(isinstance(row['text'], str) and
                        0 <= row['start'] <= row['end'] <= bound for row in rows), rows
             if speech:
                 assert any(re.search(r'[A-Za-z]{3}', row['text'].replace('[BLANK_AUDIO]', '')) for row in rows), rows
-        elif fmt == 'srt':
+                assert any(isinstance(row['p'], float) for row in rows), rows
+            return rows
+        if '"p":' in text or '"language":' in text:
+            raise AssertionError(f'{fmt} output gained JSON keys: {text[:200]}')
+        if fmt == 'srt':
             for h, m, s, ms in re.findall(r'(\d+):(\d+):(\d+),(\d+)', text):
                 stamp = ((int(h) * 60 + int(m)) * 60 + int(s)) * 1000 + int(ms)
                 assert 0 <= stamp <= bound, (stamp, bound)
@@ -87,18 +116,49 @@ def main():
                     assert re.search(r'whisper_backend_init_gpu: using MTL\d+ backend', r.stderr), 'No active Metal backend evidence'
             label = f'{"metal" if gpu else "cpu"}-{kind}-vad'
             target = out / f'{label}.json'
-            run(label, command(source, target, gpu, extra=f':vad_model={vad}', queue=3))
+            run(label, command(source, target, gpu, extra=f':vad_model={filter_value(str(vad))}', queue=3))
             validate(target, 'json', bound, kind == 'speech')
 
     target = out / 'cpu-speech-short-queue.json'
     run('cpu-speech-short-queue', command(audio, target, queue=3))
     validate(target, 'json', duration, True)
+
+    # initial_prompt must survive both escaping layers (queue=3: several chunks).
+    awkward = "Navn: O'Brien, [Ølstad]; \\sti\\ \"sitat\" — ÆØÅ"
+    target = out / 'metal-speech-prompt-escaping.json'
+    run('metal-speech-prompt-escaping',
+        command(audio, target, 1, extra=f':max_len=1:initial_prompt={filter_value(awkward)}', queue=3))
+    validate(target, 'json', duration, True)
+    if args.prompt:
+        # The app's word run (VAD, queue=20), then a short queue so the word's
+        # occurrences land in different chunks: the prompt must reach each one.
+        words, chunks = {}, {}
+        for label, prompt, queue in [('metal-words-unprompted', '', 20),
+                                     ('metal-words-prompted', args.prompt, 20),
+                                     ('metal-words-prompted-chunks', args.prompt, 5)]:
+            target = out / f'{label}.json'
+            extra = f':max_len=1:vad_model={filter_value(str(vad))}' + (f':initial_prompt={filter_value(prompt)}' if prompt else '')
+            r = run(label, command(audio, target, 1, extra=extra, queue=queue, whisper_model=prompt_model))
+            words[label] = validate(target, 'json', duration, True)
+            chunks[label] = [int(ms) for ms in re.findall(r'run transcription at (\d+) ms', r.stderr)]
+        def hits(label):
+            return [row for row in words[label] if args.prompt_word in row['text']]
+        assert not hits('metal-words-unprompted'), \
+            f'{args.prompt_word!r} appears without the prompt; pick a word the model misspells'
+        assert hits('metal-words-prompted'), [row['text'] for row in words['metal-words-prompted']]
+        origins = chunks['metal-words-prompted-chunks']
+        hit_chunks = {max(o for o in origins if o <= row['start']) for row in hits('metal-words-prompted-chunks')}
+        assert len(hit_chunks) >= 2, (origins, hits('metal-words-prompted-chunks'))
+        results.append({'case': 'prompt-spelling', 'prompt_word': args.prompt_word,
+                        'chunks_with_word': sorted(hit_chunks), 'chunk_origins_ms': origins})
+        print(f'PASS: prompt-spelling ({args.prompt_word!r} in chunks at {sorted(hit_chunks)} ms '
+              f'of {origins})', flush=True)
     for label, invalid in [('missing-model', out / 'missing-model.bin'),
                            ('malformed-model', out / 'malformed-model.bin')]:
         if label == 'malformed-model':
             invalid.write_bytes(b'not a whisper model')
         cmd = command(audio, out / f'{label}.json')
-        cmd[cmd.index('-af') + 1] = cmd[cmd.index('-af') + 1].replace(str(model), str(invalid))
+        cmd[cmd.index('-af') + 1] = cmd[cmd.index('-af') + 1].replace(filter_value(str(model)), filter_value(str(invalid)))
         r = run(label, cmd, False)
         assert 'Failed to initialize whisper context' in r.stderr
 
@@ -158,6 +218,8 @@ def main():
     report = {'binary': {'path': str(binary), 'sha256': sha(binary)},
               'model': {'path': str(model), 'sha256': sha(model)},
               'vad_model': {'path': str(vad), 'sha256': sha(vad)},
+              **({'prompt_model': {'path': str(prompt_model), 'sha256': sha(prompt_model)}}
+                 if args.prompt else {}),
               'audio': {'path': str(audio), 'sha256': sha(audio), 'duration_ms': duration},
               'results': results}
     (out / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
