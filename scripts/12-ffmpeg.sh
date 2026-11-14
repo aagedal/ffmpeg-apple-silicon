@@ -93,19 +93,21 @@ if [ "$(shasum -a 256 libavcodec/libopenjpegenc.c | cut -d ' ' -f1)" != \
     exit 1
 fi
 
-if [ "${VARIANT}" = "photo-agent" ]; then
-    # Run the actual extracted-function sanitizer harness before compiling.
-    python3 "${RECIPE_DIR}/ci/test_ffmpeg_whisper_patch.py"
-    PATCHED_HASH="eba0b4645581f5fd14f841f25b83550522d67d064aaa9fd752c828fa9ba38b71"
-    FILTER_HASH="$(shasum -a 256 libavfilter/af_whisper.c | cut -d " " -f1)"
-    if [ "${FILTER_HASH}" != "${PATCHED_HASH}" ]; then
-        python3 "${RECIPE_DIR}/ffmpeg/prepare_whisper_source.py" libavfilter/af_whisper.c \
-            --output libavfilter/af_whisper.c.patched
-        mv libavfilter/af_whisper.c.patched libavfilter/af_whisper.c
-    fi
-else
-    # Fail if somebody has patched the stock source instead of the isolated tree.
-    python3 "${RECIPE_DIR}/ffmpeg/prepare_whisper_source.py" libavfilter/af_whisper.c
+# Both app builds use the canonical Whisper JSON plus initial_prompt and the
+# per-word p/language keys (Media Converter's word pipeline, Photo Agent).
+# Run the actual extracted-function sanitizer harness before compiling.
+python3 "${RECIPE_DIR}/ci/test_ffmpeg_whisper_patch.py"
+PATCHED_HASH="d27e7b5c3c110f599b5d43c16752aec832ad858bc601096fe4db5e7de0362615"
+FILTER_HASH="$(shasum -a 256 libavfilter/af_whisper.c | cut -d " " -f1)"
+if [ "${FILTER_HASH}" != "${PATCHED_HASH}" ]; then
+    rm -f libavfilter/af_whisper.c.patched
+    python3 "${RECIPE_DIR}/ffmpeg/prepare_whisper_source.py" libavfilter/af_whisper.c \
+        --output libavfilter/af_whisper.c.patched
+    mv libavfilter/af_whisper.c.patched libavfilter/af_whisper.c
+fi
+if [ "$(shasum -a 256 libavfilter/af_whisper.c | cut -d ' ' -f1)" != "${PATCHED_HASH}" ]; then
+    echo "ERROR: af_whisper patches produced unexpected source bytes" >&2
+    exit 1
 fi
 
 if [ ! -f VERSION ] || [ "$(tr -d '\r\n' < VERSION)" != "${FFMPEG_VERSION}" ]; then

@@ -1,4 +1,4 @@
-# Photo Agent Whisper correction
+# Whisper corrections (both full builds)
 
 Vendored from Aagedal Photo Agent's `scripts/ffmpeg/` and
 `scripts/ci/test_ffmpeg_whisper_patch.py` at the user's request on 2026-10-13.
@@ -13,10 +13,42 @@ FFmpeg 9.0.1 archive; FFmpeg 9.0.2 has the same filter bytes.
 - Original source SHA-256: `322a8d54baa69b74f91552ad809a43ad0e3934632b256adf2123e4325a3b85d6`
 - Corrected source SHA-256: `eba0b4645581f5fd14f841f25b83550522d67d064aaa9fd752c828fa9ba38b71`
 
-`prepare_whisper_source.py` admits only the original hash, applies the patch
-with zero fuzz in an isolated directory, and refuses an existing output file.
-The full stock build checks the original hash; the Photo Agent build accepts
-only this original source or the already-corrected hash in its separate tree.
+`prepare_whisper_source.py` applies the patch chain below with zero fuzz in an
+isolated directory, checks the hash after each patch, and refuses an existing
+output file. It admits only the original hash or a hash from earlier in the
+chain, so a Photo Agent tree that already carries the canonical patch receives
+only the remaining one. Both full builds (`full` for Media Converter and
+`photo-agent`) apply the chain, each in its own source tree.
+
+## Word details: `initial_prompt`, `p` and `language`
+
+`af_whisper-word-details.patch` (local, LGPL 2.1 or later like the filter)
+applies after the canonical patch for Media Converter's word pipeline
+(`format=json:max_len=1`):
+
+- `initial_prompt=<text>` (default empty = unchanged): sets whisper.cpp's
+  `initial_prompt` with `carry_initial_prompt`. Each queue chunk is its own
+  `whisper_full()` call without context, so the prompt starts every chunk, and
+  carrying it keeps it in front of every 30 s decode window inside a chunk.
+- Each JSON line gains `"p"` and `"language"` after `start`, `end`, `text`:
+  `{"start":ms,"end":ms,"text":"…","p":0.8481,"language":"no"}`
+  - `p` is the mean `whisper_full_get_token_p` over the segment's text tokens
+    (ids below EOT; timestamp and special tokens skipped), clamped to 0–1 and
+    printed with four decimals. It is `null` if the segment has no text token
+    (whisper's empty `""` segments) or a probability is not finite.
+  - `language` is `whisper_lang_str(whisper_full_lang_id())` for the chunk, so
+    `language=auto` reports the detected code. It is `null` unless the code is
+    lowercase ASCII.
+
+Text and SRT output are unchanged. DTW token timestamps are not exposed: whisper.cpp
+sets them per context with an alignment-heads preset that must match the model's
+base architecture (large-v1 and large-v2 look identical to the filter, and fine-tuned
+models such as NB-Whisper only inherit a preset), and 1.9.5 disables DTW whenever
+flash attention is on (the default).
+
+- Patched source SHA-256: `d27e7b5c3c110f599b5d43c16752aec832ad858bc601096fe4db5e7de0362615`
+
+## Tests
 
 ```bash
 python3 scripts/ci/test_ffmpeg_whisper_patch.py
@@ -24,8 +56,10 @@ python3 scripts/ci/test_ffmpeg_whisper_patch.py
 
 The harness compiles the actual patched escaping, transcription, and activation
 functions with minimal dependency stubs and ASan/UBSan. It checks 63 JSON text
-roundtrips, 14 fault/runtime scenarios, 11 timing cases, and 12 allocation points,
-plus source-hash and overwrite refusal. It does not establish actual model
+roundtrips, 15 `p`/`language` cases (special-only, empty, NaN/infinite, clamped,
+odd language codes), 4 prompt cases, unchanged text/SRT output, 14 fault/runtime
+scenarios, 11 timing cases, and 12 allocation points, plus the source-hash chain
+and overwrite refusal. It does not establish actual model
 accuracy or the full FFmpeg/Whisper ABI. `tools/test_whisper_runtime.py` performs
 real process checks separately, including GPU backend evidence and real AVIO
 write failures. Timestamp discontinuities and arbitrary malformed backend data

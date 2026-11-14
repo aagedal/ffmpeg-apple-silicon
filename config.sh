@@ -59,7 +59,7 @@ export LIBAOM_VERSION="3.15.3"
 export SVT_AV1_VERSION="4.3.0"
 export VVENC_VERSION="1.14.0"
 export VVDEC_VERSION="3.2.1"
-export LIBJXL_VERSION="0.12.0"
+export LIBJXL_VERSION="0.13.0"
 export OPUS_VERSION="1.6.1"
 export VORBIS_VERSION="1.3.7"
 export OGG_VERSION="1.3.6"
@@ -67,9 +67,9 @@ export LAME_VERSION="4.0"
 export LIBASS_VERSION="0.17.5"
 export FREETYPE_VERSION="2.15.0"
 export FRIBIDI_VERSION="1.0.18"
-export HARFBUZZ_VERSION="15.0.0"
+export HARFBUZZ_VERSION="15.1.0"
 export LIBPNG_VERSION="1.6.59"
-export BROTLI_VERSION="1.2.0"
+export BROTLI_VERSION="1.2.1"
 export HIGHWAY_VERSION="1.4.0"
 export LIBWEBP_VERSION="1.6.0"
 export FLAC_VERSION="1.5.0"
@@ -145,12 +145,9 @@ ffmpeg_component_name() {
     common_id="$(cat "${WORKSPACE}/scripts/ffmpeg/yadif-videotoolbox-autorelease.patch" \
         "${WORKSPACE}/scripts/ffmpeg/libopenjpegenc-max-size.patch" \
         "${WORKSPACE}/scripts/ffmpeg/libopenjpegenc-imf.patch" | shasum -a 256 | cut -d ' ' -f1)"
-    if [ "${variant}" = "photo-agent" ]; then
-        whisper_id="$(shasum -a 256 "${WORKSPACE}/scripts/ffmpeg/af_whisper-canonical-json.patch" | cut -d ' ' -f1)"
-        echo "ffmpeg-photo-agent-metal-${common_id}-${whisper_id}"
-    else
-        echo "ffmpeg-full-metal-${common_id}"
-    fi
+    whisper_id="$(cat "${WORKSPACE}/scripts/ffmpeg/af_whisper-canonical-json.patch" \
+        "${WORKSPACE}/scripts/ffmpeg/af_whisper-word-details.patch" | shasum -a 256 | cut -d ' ' -f1)"
+    echo "ffmpeg-${variant}-metal-${common_id}-${whisper_id}"
 }
 
 # Replacing an executable in place can leave macOS with a stale code-signature
@@ -235,10 +232,12 @@ write_dist_readme() {
             echo "- OpenJPEG IMF patch SHA-256: $(shasum -a 256 "${WORKSPACE}/scripts/ffmpeg/libopenjpegenc-imf.patch" | cut -d ' ' -f1)"
             echo ""
         fi
-        if [ "${variant}" = "photo-agent" ]; then
+        if [ "${variant}" = "full" ] || [ "${variant}" = "photo-agent" ]; then
             echo "- Whisper output: canonical JSON, sample-bounded timestamps, propagated failures"
             echo "- Whisper patch SHA-256: $(shasum -a 256 "${WORKSPACE}/scripts/ffmpeg/af_whisper-canonical-json.patch" | cut -d ' ' -f1)"
-            echo "- Patched af_whisper.c SHA-256: eba0b4645581f5fd14f841f25b83550522d67d064aaa9fd752c828fa9ba38b71"
+            echo "- Whisper additions: \`initial_prompt\` option (default empty, carried into every queue chunk); JSON lines gain \`p\` (mean text-token probability) and \`language\`"
+            echo "- Whisper word-details patch SHA-256: $(shasum -a 256 "${WORKSPACE}/scripts/ffmpeg/af_whisper-word-details.patch" | cut -d ' ' -f1)"
+            echo "- Patched af_whisper.c SHA-256: d27e7b5c3c110f599b5d43c16752aec832ad858bc601096fe4db5e7de0362615"
             echo ""
         fi
         echo "## External libraries"
