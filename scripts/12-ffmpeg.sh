@@ -72,6 +72,22 @@ if [ "$(shasum -a 256 libavfilter/vf_yadif_videotoolbox.m | cut -d ' ' -f1)" != 
     exit 1
 fi
 
+# Both app builds write the QuickTime fiel atom for interlaced H.264 in MOV
+# (e.g. AVC-Intra 1080i stream copies). MP4 and other modes are unchanged.
+MOVENC_HASH="$(shasum -a 256 libavformat/movenc.c | cut -d ' ' -f1)"
+case "${MOVENC_HASH}" in
+    f4303c1c2313c590919ddcdcfac41ab1fc3d78c9a8a032462d6d83f6e767bea7)
+        patch --batch --fuzz=0 -p1 -i "${RECIPE_DIR}/ffmpeg/movenc-h264-fiel.patch"
+        ;;
+    960097131ea278459a9ee75dfa3d5b2428960388370f66724f9375e648fcf99e) ;;
+    *) echo "ERROR: Unrecognized movenc source" >&2; exit 1 ;;
+esac
+if [ "$(shasum -a 256 libavformat/movenc.c | cut -d ' ' -f1)" != \
+     "960097131ea278459a9ee75dfa3d5b2428960388370f66724f9375e648fcf99e" ]; then
+    echo "ERROR: movenc fiel patch produced unexpected source bytes" >&2
+    exit 1
+fi
+
 # Both app builds expose libopenjpeg's per-frame/per-component size caps so DCP
 # exports can honour bitrates other than the fixed cinema_mode limits, then IMF
 # profiles (Rsiz with main/sub level) using the same caps for IMF App 2e.
@@ -223,6 +239,8 @@ if ! ./ffmpeg -version | head -1 | grep -Fq "ffmpeg version ${FFMPEG_VERSION}"; 
     echo "ERROR: built FFmpeg binary is not version ${FFMPEG_VERSION}" >&2
     exit 1
 fi
+
+python3 "${RECIPE_DIR}/ci/test_movenc_fiel.py" --ffmpeg ./ffmpeg --ffprobe ./ffprobe
 
 # Copy standalone binaries to dist
 echo "Creating standalone binaries in ${OUT_DIR}..."

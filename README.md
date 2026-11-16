@@ -215,6 +215,13 @@ compiler fails the build instead of silently dropping the filter. Both builds
 also carry the proposed [upstream Metal autorelease fix](https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/23850)
 for the reproduced deinterlacer teardown crash.
 
+Both full builds also write the QuickTime `fiel` atom for H.264 in `.mov`, which
+stock FFmpeg skips. Interlaced H.264 stream copied to MOV, such as P2 AVC-Intra
+1080i, then carries its field order for QuickTime, Final Cut Pro and Resolve
+(`0x0201` top first, `0x0206` bottom first, `0x0100` progressive). MP4 output
+stays unchanged. See [the patch notes](scripts/ffmpeg/README.md#mov-fiel-for-h264). After compiling, the build runs `scripts/ci/test_movenc_fiel.py`
+against the new binary.
+
 Both full builds run the supplied ASan/UBSan harness before compilation.
 Run real CPU/Metal speech, silence, JSON/text/SRT, VAD, short-queue, model-refusal,
 cancellation and output-failure checks with explicit local inputs:

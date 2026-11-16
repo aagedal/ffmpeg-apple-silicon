@@ -143,3 +143,54 @@ honouring it would change existing output.
 With no IMF profile and no IMF level option, encoding is byte-identical to the
 max-size-only build, and the cinema profiles are unchanged. Both completion
 markers include this patch's hash.
+
+## MOV `fiel` for H.264
+
+`movenc-h264-fiel.patch` (local, LGPL 2.1 or later like the muxer) changes one
+condition in `mov_write_video_tag()` in `libavformat/movenc.c`. Stock FFmpeg
+writes the QuickTime `fiel` atom for most video codecs but skips H.264, so a
+stream copy of interlaced H.264 to `.mov` has no field information in the
+`avc1` sample entry. That includes Panasonic P2 AVC-Intra 50/100 1080i, which
+Media Converter rewraps from MXF. QuickTime, Final Cut Pro and Resolve may
+then treat the file as progressive, although `ffmpeg -i` reports "top first".
+
+With the patch, H.264 in MOV mode (`track->mode == MODE_MOV`) gets `fiel` like
+the other codecs, from the stream's field order:
+
+| Field order | `fiel` |
+|---|---|
+| progressive | `0x0100` |
+| top first (`tt`) | `0x0201` |
+| bottom first (`bb`) | `0x0206` |
+| `tb` / `bt` | `0x0209` / `0x020e` |
+| unknown | not written |
+
+MP4, 3GP, ISMV and other ISO BMFF modes are unchanged, because `fiel` is not
+part of ISO BMFF. MPEG-4 Part 2 and DNxHD are unchanged too.
+
+- Original muxer SHA-256: `f4303c1c2313c590919ddcdcfac41ab1fc3d78c9a8a032462d6d83f6e767bea7`
+- Patched muxer SHA-256: `960097131ea278459a9ee75dfa3d5b2428960388370f66724f9375e648fcf99e`
+
+Both full builds apply it with zero fuzz, like the YADIF correction, and both
+completion markers include its hash. Minimal and photo are unchanged. After
+compiling, `12-ffmpeg.sh` runs the regression check against the new binary:
+
+```bash
+python3 scripts/ci/test_movenc_fiel.py --ffmpeg dist/9.0.2/full/ffmpeg
+```
+
+It encodes top-first, bottom-first and progressive H.264 with libx264 as raw
+Annex B, so the field order comes from the bitstream, and stream copies each to
+`.mov` and `.mp4`. It also encodes top-first AVC-Intra 100 into MXF, as on a P2
+card, and stream copies it to `.mov` (`ai15` sample entry). It walks the atoms
+down to the sample entry and requires `fiel` 0x0201/0x0206/0x0100 in MOV, no
+`fiel` in MP4, and an ffprobe field order of `tt`/`bb`/`progressive`. A stock
+9.0.2 binary fails every MOV case. On the AVC-Intra MOV it has no `fiel`, and
+its own ffprobe reports `progressive`.
+
+The patch writes the stream's field order as is. When ffmpeg itself encodes
+interlaced video, its CLI labels the result `tb`/`bt` (top/bottom first,
+interleaved). An H.264 encode or a container that keeps that label, such as
+MKV, therefore gets `0x0209`/`0x020e` in MOV, as ProRes already does. That is
+QuickTime's interleaved "spatial first line early/late" detail. Stream copies
+from MXF or raw H.264 take the order from the bitstream (`tt`/`bb`).
