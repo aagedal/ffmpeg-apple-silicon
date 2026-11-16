@@ -144,7 +144,8 @@ ffmpeg_component_name() {
     local common_id whisper_id
     common_id="$(cat "${WORKSPACE}/scripts/ffmpeg/yadif-videotoolbox-autorelease.patch" \
         "${WORKSPACE}/scripts/ffmpeg/libopenjpegenc-max-size.patch" \
-        "${WORKSPACE}/scripts/ffmpeg/libopenjpegenc-imf.patch" | shasum -a 256 | cut -d ' ' -f1)"
+        "${WORKSPACE}/scripts/ffmpeg/libopenjpegenc-imf.patch" \
+        "${WORKSPACE}/scripts/ffmpeg/movenc-h264-fiel.patch" | shasum -a 256 | cut -d ' ' -f1)"
     whisper_id="$(cat "${WORKSPACE}/scripts/ffmpeg/af_whisper-canonical-json.patch" \
         "${WORKSPACE}/scripts/ffmpeg/af_whisper-word-details.patch" | shasum -a 256 | cut -d ' ' -f1)"
     echo "ffmpeg-${variant}-metal-${common_id}-${whisper_id}"
@@ -230,6 +231,8 @@ write_dist_readme() {
             echo "- OpenJPEG encoder patch SHA-256: $(shasum -a 256 "${WORKSPACE}/scripts/ffmpeg/libopenjpegenc-max-size.patch" | cut -d ' ' -f1)"
             echo "- Common source addition: libopenjpeg IMF profiles (\`-profile imf_2k|imf_4k|imf_8k|imf_2k_r|imf_4k_r|imf_8k_r\`, \`imf_mainlevel\`/\`imf_sublevel\`, default -1 = derived) with \`max_cs_size\` rate control"
             echo "- OpenJPEG IMF patch SHA-256: $(shasum -a 256 "${WORKSPACE}/scripts/ffmpeg/libopenjpegenc-imf.patch" | cut -d ' ' -f1)"
+            echo "- Common source correction: MOV muxer writes the \`fiel\` atom for H.264 (interlaced field order, e.g. AVC-Intra); MP4 unchanged"
+            echo "- movenc fiel patch SHA-256: $(shasum -a 256 "${WORKSPACE}/scripts/ffmpeg/movenc-h264-fiel.patch" | cut -d ' ' -f1)"
             echo ""
         fi
         if [ "${variant}" = "full" ] || [ "${variant}" = "photo-agent" ]; then
