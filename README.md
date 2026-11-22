@@ -1,4 +1,4 @@
-# FFmpeg 9.0.2 Build with JPEG XL Support (Apple Silicon)
+# FFmpeg 9.1 Build with JPEG XL Support (Apple Silicon)
 
 This repository contains a modular build system for creating a custom static FFmpeg binary on **Apple Silicon Macs** (M1/M2/M3) with comprehensive codec support, including JPEG XL (libjxl) and macOS hardware acceleration (VideoToolbox/AudioToolbox).
 
@@ -6,7 +6,7 @@ This repository contains a modular build system for creating a custom static FFm
 
 ## Features
 
-The dependency pins below were audited against their upstream stable releases on **2026-11-03**. FFmpeg is pinned to [9.0.2](https://ffmpeg.org/download.html). Supporting libraries also use libpng 1.6.59, Brotli 1.2.0, and Highway 1.4.0; x264 is fetched from its current stable branch for a fresh build.
+The dependency pins below were audited against their upstream stable releases on **2026-11-03**. FFmpeg is pinned to [9.1](https://ffmpeg.org/download.html). Supporting libraries also use libpng 1.6.59, Brotli 1.2.1, and Highway 1.4.0; x264 is fetched from its current stable branch for a fresh build.
 
 ### Video Codecs
 - **x264** (stable) - H.264/AVC encoding
@@ -139,7 +139,7 @@ ffmpeg_aagedal/
 ├── compiled/             # Compiled libraries (created during build)
 ├── .build-progress       # Build progress tracker
 └── dist/                 # Final binaries (created after build)
-    └── <version>/        # e.g. 9.0.2/
+    └── <version>/        # e.g. 9.1/
         ├── full/         # ffmpeg + ffprobe (full build, Media Converter)
         ├── photo-agent/  # ffmpeg + ffprobe (same build for Photo Agent)
         └── photo/        # ffmpeg + ffprobe (image-only build)
@@ -156,8 +156,8 @@ Use the included verification script:
 Or manually verify JPEG XL support (binaries live under `dist/<version>/<variant>/`):
 
 ```bash
-./dist/9.0.2/full/ffmpeg -version
-./dist/9.0.2/full/ffmpeg -codecs | grep jxl
+./dist/9.1/full/ffmpeg -version
+./dist/9.1/full/ffmpeg -codecs | grep jxl
 ```
 
 Test macOS hardware acceleration:
@@ -183,13 +183,15 @@ Example encoding with JPEG XL:
 
 ### Separate app builds
 
-Media Converter uses `dist/9.0.2/full/` and Photo Agent uses `dist/9.0.2/photo-agent/`.
+Media Converter uses `dist/9.1/full/` and Photo Agent uses `dist/9.1/photo-agent/`.
 Both carry the same pinned `af_whisper.c` patches, each in its own source tree.
 JSON retains original whitespace and `[BLANK_AUDIO]`, escapes JSON syntax/control
 bytes, bounds timestamps to supplied audio, and propagates inference/output failures.
 Text/SRT retain their cleaning. The filter also takes `initial_prompt=<text>`
 (default empty), which conditions every queue chunk, and each JSON line ends with
-`"p"` (mean text-token probability, or `null`) and `"language"`:
+`"p"` (mean text-token probability, or `null`) and `"language"` (or `null`).
+FFmpeg 9.1's `language=eval|lock` auto-detect modes also work (`lock` keeps the
+first detected language for later chunks):
 
 ```json
 {"start":8780,"end":9610,"text":" Qvigstad","p":0.8057,"language":"no"}
@@ -211,9 +213,10 @@ the Photo Agent build never installs over `compiled/bin/ffmpeg`. Both full
 builds require Metal and `yadif_videotoolbox` explicitly. The recipe checks `xcrun`
 and falls back to an already mounted Xcode MetalToolchain. If needed, set
 `FFMPEG_METALCC` and `FFMPEG_METALLIB` to working compiler/linker paths. An absent
-compiler fails the build instead of silently dropping the filter. Both builds
-also carry the proposed [upstream Metal autorelease fix](https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/23850)
-for the reproduced deinterlacer teardown crash.
+compiler fails the build instead of silently dropping the filter. FFmpeg 9.1
+includes the [Metal autorelease fix](https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/23850)
+for the deinterlacer teardown crash that earlier builds patched locally; the
+recipe pins that filter source so it can't regress unnoticed.
 
 Both full builds also write the QuickTime `fiel` atom for H.264 in `.mov`, which
 stock FFmpeg skips. Interlaced H.264 stream copied to MOV, such as P2 AVC-Intra
@@ -228,7 +231,7 @@ cancellation and output-failure checks with explicit local inputs:
 
 ```bash
 python3 tools/test_whisper_runtime.py \
-  --binary dist/9.0.2/photo-agent/ffmpeg \
+  --binary dist/9.1/photo-agent/ffmpeg \
   --model /absolute/path/ggml-tiny.en.bin \
   --vad-model /absolute/path/ggml-silero-v6.2.0.bin \
   --audio /absolute/path/speech-16khz-mono.wav \
@@ -249,7 +252,7 @@ inference/allocation/metadata/close failures. See [patch attribution and test sc
 A much smaller image-only binary built by `scripts/12a-ffmpeg-photo.sh`. It decodes most common image formats (PNG, JPEG, JPEG 2000, JPEG XL, WebP, TIFF, BMP, GIF, AVIF, HEIC, PSD, EXR, DPX, TGA, PNM, QOI, and more) and encodes **AVIF** (via SVT-AV1 or libaom) and **JPEG XL** (via libjxl), plus WebP/PNG/JPEG/TIFF/EXR for convenience. No audio codecs, no general video codecs, no network.
 
 ```bash
-FFP=./dist/9.0.2/photo/ffmpeg
+FFP=./dist/9.1/photo/ffmpeg
 
 # JPEG XL export (distance 0 = mathematically lossless, 1 ≈ visually lossless)
 $FFP -i input.png -c:v libjxl -distance 1 output.jxl
@@ -279,7 +282,7 @@ Edit `config.sh` and modify the version variables:
 
 ```bash
 export LIBJXL_VERSION="0.13.0"
-export FFMPEG_VERSION="9.0.2"
+export FFMPEG_VERSION="9.1"
 # ... etc
 ```
 
@@ -347,7 +350,7 @@ After building and verifying, sign every edition with your Developer ID Applicat
 ./tools/verify.sh
 SIGN_IDENTITY='<Developer ID Application identity or SHA-1>' ./tools/sign.sh
 # Or sign only the two full app builds:
-SIGN_IDENTITY='<Developer ID Application identity or SHA-1>' ./tools/sign.sh 9.0.2 full photo-agent
+SIGN_IDENTITY='<Developer ID Application identity or SHA-1>' ./tools/sign.sh 9.1 full photo-agent
 ```
 
 The signing script checks the version, ARM64 architecture, and library dependencies, then applies hardened runtime and a secure timestamp and verifies each signature. Run it again after rebuilding, which replaces the signed binaries. Resuming an already completed full build preserves its existing distribution signatures.

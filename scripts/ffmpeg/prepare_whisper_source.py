@@ -6,15 +6,15 @@ from pathlib import Path
 import subprocess
 import tempfile
 
-ORIGINAL_SHA256 = "322a8d54baa69b74f91552ad809a43ad0e3934632b256adf2123e4325a3b85d6"
+ORIGINAL_SHA256 = "ebf55032923ab03d9d2e40c2604198883c3957fe18e089b9157d85105e747dea"
 # Applied in order; each entry is the patch and the source hash it produces.
 # A tree already carrying a prefix of the chain (an earlier Photo Agent build)
 # receives only the remaining patches.
 PATCHES = [
     (Path(__file__).with_name("af_whisper-canonical-json.patch"),
-     "eba0b4645581f5fd14f841f25b83550522d67d064aaa9fd752c828fa9ba38b71"),
+     "ffa3c2bc212623c44e3b97dbcba7bdd50bd266ae6ffef5c40845f6be4cdd7711"),
     (Path(__file__).with_name("af_whisper-word-details.patch"),
-     "d27e7b5c3c110f599b5d43c16752aec832ad858bc601096fe4db5e7de0362615"),
+     "426d77efd5678d610d095b9f7552a097a39c7798367b4bbfdb0dcb2fe6d15ee4"),
 ]
 PATCHED_SHA256 = PATCHES[-1][1]
 

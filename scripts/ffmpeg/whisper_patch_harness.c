@@ -47,7 +47,8 @@ typedef struct WhisperContext {
     int64_t audio_buffer_start_samples, next_pts;
     float *audio_buffer;
     const char *language, *format, *initial_prompt;
-    bool translate;
+    char *locked_language;
+    bool translate, lock_language;
     AVIOContext *avio_context;
 } WhisperContext;
 typedef struct AVFilterLink { int unused; } AVFilterLink;
@@ -205,8 +206,16 @@ int main(int argc, char **argv) {
         /* format <text|srt>: non-JSON output must not gain the JSON keys. */
         assert(argc==3); w.format=argv[2]; segment_text=" word";
         assert(run_transcription(&ctx,&frame,4)==0);
-        assert(language_lookups==0);
         fputs(output,stdout);
+    } else if (!strcmp(argv[1],"lock-language")) {
+        /* FFmpeg 9.1 language=lock: the first detected language is reused. */
+        w.language="auto"; w.lock_language=true; segment_text=" word";
+        w.audio_buffer_fill_size=8;
+        assert(run_transcription(&ctx,&frame,4)==0);
+        assert(w.locked_language && !strcmp(w.language,"no") && w.language==w.locked_language);
+        assert(run_transcription(&ctx,&frame,4)==0);
+        assert(w.language==w.locked_language);
+        av_freep(&w.locked_language);
     } else if (!strcmp(argv[1],"timing")) {
         assert(argc==6);
         w.audio_buffer_start_samples=strtoll(argv[2],NULL,10);

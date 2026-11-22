@@ -78,7 +78,7 @@ def main():
         assert check([str(binary), "format", "srt"]) == "0\n00:00:00,100 --> 00:00:00,100\nword\n\n"
         for fault in ["inference", "missing-context", "null-segment", "write", "metadata", "metadata-duration",
                       "overlap", "eof-last-frame", "eof-close", "eof-flush", "upstream-error",
-                      "eof-success", "no-speech", "time-overflow"]:
+                      "eof-success", "no-speech", "time-overflow", "lock-language"]:
             check([str(binary), fault])
         timing_cases = [
             # Five seconds of supplied samples, despite padded model end ticks.
@@ -128,7 +128,7 @@ def main():
                                  capture_output=True, text=True)
         assert refused.returncode != 0 and existing.read_text() == "preserve"
     print(f"PASS: {len(cases)} exact JSON text roundtrips, {detail_count} p/language cases, 4 prompt cases, "
-          "2 text/SRT format cases, 14 runtime/fault cases, 11 sample-bound timing cases, "
+          "2 text/SRT format cases, 15 runtime/fault cases, 11 sample-bound timing cases, "
           "12 allocation points, pinned source chain and overwrite refusal (ASan/UBSan).")
 
 

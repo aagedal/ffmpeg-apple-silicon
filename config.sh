@@ -78,7 +78,7 @@ export LIBBLURAY_VERSION="1.5.0"
 export WHISPER_VERSION="1.9.5"
 export OPENJPEG_VERSION="2.5.4"
 export VMAF_VERSION="3.2.1"
-export FFMPEG_VERSION="9.0.2"
+export FFMPEG_VERSION="9.1"
 
 # Progress tracking
 export PROGRESS_FILE="${PROGRESS_FILE:-${WORKSPACE}/.build-progress}"
@@ -142,8 +142,7 @@ resolve_ffmpeg_metal() {
 ffmpeg_component_name() {
     local variant="$1"
     local common_id whisper_id
-    common_id="$(cat "${WORKSPACE}/scripts/ffmpeg/yadif-videotoolbox-autorelease.patch" \
-        "${WORKSPACE}/scripts/ffmpeg/libopenjpegenc-max-size.patch" \
+    common_id="$(cat "${WORKSPACE}/scripts/ffmpeg/libopenjpegenc-max-size.patch" \
         "${WORKSPACE}/scripts/ffmpeg/libopenjpegenc-imf.patch" \
         "${WORKSPACE}/scripts/ffmpeg/movenc-h264-fiel.patch" | shasum -a 256 | cut -d ' ' -f1)"
     whisper_id="$(cat "${WORKSPACE}/scripts/ffmpeg/af_whisper-canonical-json.patch" \
@@ -225,8 +224,6 @@ write_dist_readme() {
         echo "- License: GPL version 3 or later (no nonfree components)"
         echo ""
         if [ "${variant}" = "full" ] || [ "${variant}" = "photo-agent" ]; then
-            echo "- Common source correction: yadif_videotoolbox Metal autorelease teardown fix (upstream PR 23850)"
-            echo "- YADIF patch SHA-256: $(shasum -a 256 "${WORKSPACE}/scripts/ffmpeg/yadif-videotoolbox-autorelease.patch" | cut -d ' ' -f1)"
             echo "- Common source addition: libopenjpeg encoder options \`max_cs_size\`/\`max_comp_size\` (default 0 = unchanged) for DCI frame-size caps"
             echo "- OpenJPEG encoder patch SHA-256: $(shasum -a 256 "${WORKSPACE}/scripts/ffmpeg/libopenjpegenc-max-size.patch" | cut -d ' ' -f1)"
             echo "- Common source addition: libopenjpeg IMF profiles (\`-profile imf_2k|imf_4k|imf_8k|imf_2k_r|imf_4k_r|imf_8k_r\`, \`imf_mainlevel\`/\`imf_sublevel\`, default -1 = derived) with \`max_cs_size\` rate control"
@@ -240,7 +237,7 @@ write_dist_readme() {
             echo "- Whisper patch SHA-256: $(shasum -a 256 "${WORKSPACE}/scripts/ffmpeg/af_whisper-canonical-json.patch" | cut -d ' ' -f1)"
             echo "- Whisper additions: \`initial_prompt\` option (default empty, carried into every queue chunk); JSON lines gain \`p\` (mean text-token probability) and \`language\`"
             echo "- Whisper word-details patch SHA-256: $(shasum -a 256 "${WORKSPACE}/scripts/ffmpeg/af_whisper-word-details.patch" | cut -d ' ' -f1)"
-            echo "- Patched af_whisper.c SHA-256: d27e7b5c3c110f599b5d43c16752aec832ad858bc601096fe4db5e7de0362615"
+            echo "- Patched af_whisper.c SHA-256: 426d77efd5678d610d095b9f7552a097a39c7798367b4bbfdb0dcb2fe6d15ee4"
             echo ""
         fi
         echo "## External libraries"
