@@ -1,6 +1,6 @@
 --- a/libavfilter/af_whisper.c
 +++ b/libavfilter/af_whisper.c
-@@ -55,6 +55,7 @@
+@@ -57,6 +57,7 @@
      char *destination;
      char *format;
      int max_len;
@@ -8,7 +8,7 @@
  
      struct whisper_context *ctx_wsp;
      struct whisper_vad_context *ctx_vad;
-@@ -241,6 +242,43 @@
+@@ -251,6 +252,43 @@
      return ticks * 10;
  }
  
@@ -52,7 +52,7 @@
  static int run_transcription(AVFilterContext *ctx, AVFrame *frame, int samples)
  {
      WhisperContext *wctx = ctx->priv;
-@@ -276,6 +314,13 @@
+@@ -286,6 +324,13 @@
      params.max_len = wctx->max_len;
      params.token_timestamps = (wctx->max_len > 0);
      params.split_on_word = (wctx->max_len > 0);
@@ -66,19 +66,18 @@
  
      if (whisper_full(wctx->ctx_wsp, params, wctx->audio_buffer, samples) != 0) {
          av_log(ctx, AV_LOG_ERROR, "Failed to process audio with whisper.cpp\n");
-@@ -287,6 +332,11 @@
+@@ -299,6 +344,10 @@
      char *text_cleaned = NULL;
      char *buf = NULL;
      const int json_output = !av_strcasecmp(wctx->format, "json");
 +    char language_json[16];
 +
 +    if (json_output)
-+        whisper_language_json(whisper_lang_str(whisper_full_lang_id(wctx->ctx_wsp)),
-+                              language_json, sizeof(language_json));
++        whisper_language_json(detected_language, language_json, sizeof(language_json));
  
      for (int i = 0; i < n_segments; ++i) {
          const char *text = whisper_full_get_segment_text(wctx->ctx_wsp, i);
-@@ -349,12 +399,15 @@
+@@ -361,14 +410,15 @@
  
                  wctx->index++;
              } else if (json_output) {
@@ -88,14 +87,16 @@
                      ret = AVERROR(ENOMEM);
                      goto fail;
                  }
--                buf = av_asprintf("{\"start\":%" PRId64 ",\"end\":%" PRId64 ",\"text\":\"%s\"}\n", start_t, end_t, escaped);
+-                buf = av_asprintf("{\"start\":%" PRId64 ",\"end\":%" PRId64 ",\"text\":\"%s\",\"language\":\"%s\"}\n",
+-                                  start_t, end_t, escaped,
+-                                  detected_language ? detected_language : "unknown");
 +                whisper_segment_p_json(wctx->ctx_wsp, i, p_json, sizeof(p_json));
 +                buf = av_asprintf("{\"start\":%" PRId64 ",\"end\":%" PRId64 ",\"text\":\"%s\",\"p\":%s,\"language\":%s}\n",
 +                                  start_t, end_t, escaped, p_json, language_json);
                  av_freep(&escaped);
              } else
                  buf = av_asprintf("%s\n", text_cleaned);
-@@ -599,6 +652,7 @@
+@@ -625,6 +675,7 @@
      { "destination", "Output destination", OFFSET(destination), AV_OPT_TYPE_STRING, {.str = ""}, .flags = FLAGS },
      { "format", "Output format (text|srt|json)", OFFSET(format), AV_OPT_TYPE_STRING, {.str = "text"},.flags = FLAGS },
      { "max_len", "Max segment length in characters", OFFSET(max_len), AV_OPT_TYPE_INT, {.i64 = 0}, 0, INT_MAX, .flags = FLAGS },

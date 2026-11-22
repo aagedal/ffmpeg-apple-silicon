@@ -57,18 +57,12 @@ if [ ! -d "${TREE}" ]; then
 fi
 cd "${TREE}"
 
-# Both app builds need the upstream proposed Metal ownership correction.
-YADIF_HASH="$(shasum -a 256 libavfilter/vf_yadif_videotoolbox.m | cut -d ' ' -f1)"
-case "${YADIF_HASH}" in
-    dad7ff78662f5e6eda23e36a8f9fb4c155e6606d2dd8178df81063a657fb8d3c)
-        patch --batch --fuzz=0 -p1 -i "${RECIPE_DIR}/ffmpeg/yadif-videotoolbox-autorelease.patch"
-        ;;
-    950f9acd1346a45171710c163d5f78c0673b0dcd59d57ee767b66919a07c7e37) ;;
-    *) echo "ERROR: Unrecognized yadif_videotoolbox source" >&2; exit 1 ;;
-esac
+# FFmpeg 9.1 carries the yadif_videotoolbox Metal autorelease fix upstream
+# (formerly a local patch). Refuse any other filter source so the fix can't
+# silently regress on a future version bump.
 if [ "$(shasum -a 256 libavfilter/vf_yadif_videotoolbox.m | cut -d ' ' -f1)" != \
-     "950f9acd1346a45171710c163d5f78c0673b0dcd59d57ee767b66919a07c7e37" ]; then
-    echo "ERROR: YADIF correction produced unexpected source bytes" >&2
+     "ab6841fd7952c472fcbd15b48f2ebe7657ac6146a4d31cd78926e0d203029bac" ]; then
+    echo "ERROR: Unrecognized yadif_videotoolbox source" >&2
     exit 1
 fi
 
@@ -76,14 +70,14 @@ fi
 # (e.g. AVC-Intra 1080i stream copies). MP4 and other modes are unchanged.
 MOVENC_HASH="$(shasum -a 256 libavformat/movenc.c | cut -d ' ' -f1)"
 case "${MOVENC_HASH}" in
-    f4303c1c2313c590919ddcdcfac41ab1fc3d78c9a8a032462d6d83f6e767bea7)
+    a7d7237ed825a011ceaa31accfdef5331e105c975167700c0ba9e407731c6dbe)
         patch --batch --fuzz=0 -p1 -i "${RECIPE_DIR}/ffmpeg/movenc-h264-fiel.patch"
         ;;
-    960097131ea278459a9ee75dfa3d5b2428960388370f66724f9375e648fcf99e) ;;
+    ec5aae9d045a9c6581f09015a20c7abdf6ec9c28b9bad1db6cccdfbe9c209d2c) ;;
     *) echo "ERROR: Unrecognized movenc source" >&2; exit 1 ;;
 esac
 if [ "$(shasum -a 256 libavformat/movenc.c | cut -d ' ' -f1)" != \
-     "960097131ea278459a9ee75dfa3d5b2428960388370f66724f9375e648fcf99e" ]; then
+     "ec5aae9d045a9c6581f09015a20c7abdf6ec9c28b9bad1db6cccdfbe9c209d2c" ]; then
     echo "ERROR: movenc fiel patch produced unexpected source bytes" >&2
     exit 1
 fi
@@ -113,7 +107,7 @@ fi
 # per-word p/language keys (Media Converter's word pipeline, Photo Agent).
 # Run the actual extracted-function sanitizer harness before compiling.
 python3 "${RECIPE_DIR}/ci/test_ffmpeg_whisper_patch.py"
-PATCHED_HASH="d27e7b5c3c110f599b5d43c16752aec832ad858bc601096fe4db5e7de0362615"
+PATCHED_HASH="426d77efd5678d610d095b9f7552a097a39c7798367b4bbfdb0dcb2fe6d15ee4"
 FILTER_HASH="$(shasum -a 256 libavfilter/af_whisper.c | cut -d " " -f1)"
 if [ "${FILTER_HASH}" != "${PATCHED_HASH}" ]; then
     rm -f libavfilter/af_whisper.c.patched
@@ -126,7 +120,7 @@ if [ "$(shasum -a 256 libavfilter/af_whisper.c | cut -d ' ' -f1)" != "${PATCHED_
     exit 1
 fi
 
-if [ ! -f VERSION ] || [ "$(tr -d '\r\n' < VERSION)" != "${FFMPEG_VERSION}" ]; then
+if [ ! -f FF_VERSION ] || [ "$(tr -d '\r\n' < FF_VERSION)" != "${FFMPEG_VERSION}" ]; then
     echo "ERROR: FFmpeg source tree does not match requested version ${FFMPEG_VERSION}" >&2
     exit 1
 fi

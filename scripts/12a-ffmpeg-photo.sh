@@ -26,7 +26,7 @@ fi
 
 cd "ffmpeg-${FFMPEG_VERSION}"
 
-if [ ! -f VERSION ] || [ "$(tr -d '\r\n' < VERSION)" != "${FFMPEG_VERSION}" ]; then
+if [ ! -f FF_VERSION ] || [ "$(tr -d '\r\n' < FF_VERSION)" != "${FFMPEG_VERSION}" ]; then
     echo "ERROR: FFmpeg source tree does not match requested version ${FFMPEG_VERSION}" >&2
     exit 1
 fi

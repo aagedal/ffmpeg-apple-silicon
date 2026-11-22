@@ -7,11 +7,17 @@ The patch modifies only FFmpeg's `libavfilter/af_whisper.c`.
 The unmodified fixture is Copyright (c) 2025 Vittorio Palmisano, FFmpeg,
 LGPL 2.1 or later. Its retained header and `COPYING.LGPLv2.1` cover the filter
 and correction. The Photo Agent source package records the local correction
-as LGPL 2.1-or-later. The fixture was originally extracted from its attributed
-FFmpeg 9.0.1 archive; FFmpeg 9.0.2 has the same filter bytes.
+as LGPL 2.1-or-later. The fixture is extracted from the attributed FFmpeg 9.1
+archive (the 9.0.x chain was rebased onto 9.1 on 2026-11-22).
 
-- Original source SHA-256: `322a8d54baa69b74f91552ad809a43ad0e3934632b256adf2123e4325a3b85d6`
-- Corrected source SHA-256: `eba0b4645581f5fd14f841f25b83550522d67d064aaa9fd752c828fa9ba38b71`
+- Original source SHA-256: `ebf55032923ab03d9d2e40c2604198883c3957fe18e089b9157d85105e747dea`
+- Corrected source SHA-256: `ffa3c2bc212623c44e3b97dbcba7bdd50bd266ae6ffef5c40845f6be4cdd7711`
+
+FFmpeg 9.1 added `language=eval|lock` (auto-detect; `lock` reuses the first
+detected language for later chunks) and its own `"language":"<code>"` JSON key,
+with `"unknown"` when nothing was detected. The canonical patch keeps that key
+(escaped JSON text otherwise); the word-details patch below replaces it with the
+same `p`/`language` layout as the 9.0.x builds, so the JSON contract is unchanged.
 
 `prepare_whisper_source.py` applies the patch chain below with zero fuzz in an
 isolated directory, checks the hash after each patch, and refuses an existing
@@ -46,7 +52,7 @@ base architecture (large-v1 and large-v2 look identical to the filter, and fine-
 models such as NB-Whisper only inherit a preset), and 1.9.5 disables DTW whenever
 flash attention is on (the default).
 
-- Patched source SHA-256: `d27e7b5c3c110f599b5d43c16752aec832ad858bc601096fe4db5e7de0362615`
+- Patched source SHA-256: `426d77efd5678d610d095b9f7552a097a39c7798367b4bbfdb0dcb2fe6d15ee4`
 
 ## Tests
 
@@ -57,30 +63,24 @@ python3 scripts/ci/test_ffmpeg_whisper_patch.py
 The harness compiles the actual patched escaping, transcription, and activation
 functions with minimal dependency stubs and ASan/UBSan. It checks 63 JSON text
 roundtrips, 15 `p`/`language` cases (special-only, empty, NaN/infinite, clamped,
-odd language codes), 4 prompt cases, unchanged text/SRT output, 14 fault/runtime
-scenarios, 11 timing cases, and 12 allocation points, plus the source-hash chain
+odd language codes), 4 prompt cases, unchanged text/SRT output, 15 fault/runtime
+scenarios (including 9.1's `language=lock`), 11 timing cases, and 12 allocation points, plus the source-hash chain
 and overwrite refusal. It does not establish actual model
 accuracy or the full FFmpeg/Whisper ABI. `tools/test_whisper_runtime.py` performs
 real process checks separately, including GPU backend evidence and real AVIO
 write failures. Timestamp discontinuities and arbitrary malformed backend data
 remain outside the tested scope.
 
-## Common VideoToolbox correction
+## VideoToolbox YADIF teardown fix (upstream since 9.1)
 
-Both full builds also apply Vincent Herbst's proposed upstream fix for the
-reproduced `yadif_videotoolbox` teardown crash:
-[FFmpeg PR 23850](https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/23850),
-commit `732e3afeb3f4a35389edeccc4329256265519a56` (2026-07-19). The verbatim
-upstream patch retains its authorship. The modified FFmpeg filter is LGPL 2.1
-or later. This is a proposed upstream fix, not a claim of inclusion in 9.0.2.
-It wraps the kernel invocation in an autorelease pool and removes two releases
-of borrowed Metal objects; the deinterlacing algorithm stays the same.
+Builds up to 9.0.2 applied Vincent Herbst's fix for the `yadif_videotoolbox`
+teardown crash ([FFmpeg PR 23850](https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/23850),
+commit `732e3afeb3f4a35389edeccc4329256265519a56`) as a local patch. FFmpeg 9.1
+ships it, so the patch is retired. `12-ffmpeg.sh` pins the 9.1 filter source and
+refuses anything else, so a future version bump can't silently lose the fix.
 
-- Original filter SHA-256: `dad7ff78662f5e6eda23e36a8f9fb4c155e6606d2dd8178df81063a657fb8d3c`
-- Corrected filter SHA-256: `950f9acd1346a45171710c163d5f78c0673b0dcd59d57ee767b66919a07c7e37`
+- FFmpeg 9.1 filter SHA-256: `ab6841fd7952c472fcbd15b48f2ebe7657ac6146a4d31cd78926e0d203029bac`
 
-Both completion markers include this patch's hash. The recipe admits only these
-source hashes and checks the corrected result after zero-fuzz application.
 `tools/test_yadif_videotoolbox.sh` tests NV12/P010 hardware frames in frame/field
 modes, checks frame counts, and requires successful process exit after teardown.
 
@@ -168,15 +168,15 @@ the other codecs, from the stream's field order:
 MP4, 3GP, ISMV and other ISO BMFF modes are unchanged, because `fiel` is not
 part of ISO BMFF. MPEG-4 Part 2 and DNxHD are unchanged too.
 
-- Original muxer SHA-256: `f4303c1c2313c590919ddcdcfac41ab1fc3d78c9a8a032462d6d83f6e767bea7`
-- Patched muxer SHA-256: `960097131ea278459a9ee75dfa3d5b2428960388370f66724f9375e648fcf99e`
+- Original muxer SHA-256 (9.1): `a7d7237ed825a011ceaa31accfdef5331e105c975167700c0ba9e407731c6dbe`
+- Patched muxer SHA-256 (9.1): `ec5aae9d045a9c6581f09015a20c7abdf6ec9c28b9bad1db6cccdfbe9c209d2c`
 
-Both full builds apply it with zero fuzz, like the YADIF correction, and both
+Both full builds apply it with zero fuzz, and both
 completion markers include its hash. Minimal and photo are unchanged. After
 compiling, `12-ffmpeg.sh` runs the regression check against the new binary:
 
 ```bash
-python3 scripts/ci/test_movenc_fiel.py --ffmpeg dist/9.0.2/full/ffmpeg
+python3 scripts/ci/test_movenc_fiel.py --ffmpeg dist/9.1/full/ffmpeg
 ```
 
 It encodes top-first, bottom-first and progressive H.264 with libx264 as raw
@@ -185,7 +185,7 @@ Annex B, so the field order comes from the bitstream, and stream copies each to
 card, and stream copies it to `.mov` (`ai15` sample entry). It walks the atoms
 down to the sample entry and requires `fiel` 0x0201/0x0206/0x0100 in MOV, no
 `fiel` in MP4, and an ffprobe field order of `tt`/`bb`/`progressive`. A stock
-9.0.2 binary fails every MOV case. On the AVC-Intra MOV it has no `fiel`, and
+9.0.2 or 9.1 binary fails every MOV case. On the AVC-Intra MOV it has no `fiel`, and
 its own ffprobe reports `progressive`.
 
 The patch writes the stream's field order as is. When ffmpeg itself encodes
